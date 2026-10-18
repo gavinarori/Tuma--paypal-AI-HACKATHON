@@ -1,0 +1,23 @@
+# Render blueprint. Use a free external Postgres (e.g. Neon) for DATABASE_URL.
+# Free web services may sleep when idle: open the app once before recording or judging.
+services:
+  - type: web
+    name: tuma
+    runtime: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: NEXT_PUBLIC_PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_API_BASE
+        value: https://api-m.sandbox.paypal.com
+      - key: GEMINI_API_KEY
+        sync: false
