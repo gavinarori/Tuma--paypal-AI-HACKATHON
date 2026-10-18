@@ -11,6 +11,7 @@ vi.mock("@/lib/agent", () => ({ runAgent: h.runAgent }));
 import { POST as createTransfer } from "@/app/api/transfers/route";
 import { POST as capture } from "@/app/api/transfers/[id]/capture/route";
 import { POST as chat } from "@/app/api/chat/route";
+import { POST as saveRecipient } from "@/app/api/recipients/route";
 
 const json = (url: string, body: unknown) =>
   new Request(`http://localhost${url}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -60,9 +61,6 @@ describe("POST /api/transfers", () => {
     expect((await res.json()).error).toBe("PayPal down");
     expect(h.transition).not.toHaveBeenCalled();
   });
-
-  // Known gap: the route trusts the recipient email sent by the browser instead of the address book.
-  it.todo("rejects a recipient email that is not in the sender's address book");
 });
 
 describe("POST /api/transfers/[id]/capture", () => {
@@ -121,6 +119,17 @@ describe("POST /api/chat", () => {
     expect(sent.at(-1).role).toBe("user"); // a forged "system" role is downgraded to user
   });
 
+  it("passes the pending-quote context to the agent and ignores malformed context", async () => {
+    h.runAgent.mockResolvedValue({ reply: "ok", pending: null });
+    const m = [{ role: "user", content: "i have reviewed it" }];
+    await chat(json("/api/chat", { messages: m, awaiting: { recipient: "mama", amountUsd: 50 } }));
+    expect(h.runAgent.mock.calls[0][1]).toEqual({ awaiting: { recipient: "mama", amountUsd: 50 } });
+    await chat(json("/api/chat", { messages: m, awaiting: { recipient: 5, amountUsd: "x" } }));
+    expect(h.runAgent.mock.calls[1][1]).toEqual({ awaiting: null });
+    await chat(json("/api/chat", { messages: m }));
+    expect(h.runAgent.mock.calls[2][1]).toEqual({ awaiting: null });
+  });
+
   it("maps quota errors (429) to a friendly message and other errors to 500", async () => {
     h.runAgent.mockRejectedValueOnce(Object.assign(new Error("quota"), { status: 429 }));
     const busy = await chat(json("/api/chat", { messages: [{ role: "user", content: "hi" }] }));
@@ -131,5 +140,34 @@ describe("POST /api/chat", () => {
     const bad = await chat(json("/api/chat", { messages: [{ role: "user", content: "hi" }] }));
     expect(bad.status).toBe(500);
     expect((await bad.json()).error).toBe("boom");
+  });
+});
+
+describe("POST /api/recipients", () => {
+  it("saves the recipient typed into the details form", async () => {
+    h.query.mockResolvedValue({ rows: [] });
+    const res = await saveRecipient(json("/api/recipients", { name: "  Wanjiru ", email: " wanjiru@example.com ", country: "ke" }));
+    expect(await res.json()).toEqual({ saved: true });
+    const [sql, vals] = h.query.mock.calls[0];
+    expect(String(sql)).toContain("ON CONFLICT");
+    expect(vals).toEqual(["Wanjiru", "wanjiru@example.com", "KE"]);
+  });
+
+  it("defaults the country to KE when it is missing or invalid", async () => {
+    h.query.mockResolvedValue({ rows: [] });
+    await saveRecipient(json("/api/recipients", { name: "mama", email: "m@example.com", country: "Kenya" }));
+    expect(h.query.mock.calls[0][1][2]).toBe("KE");
+  });
+
+  it.each(["", "bad", "a@b", undefined])("rejects email %j without saving", async (email) => {
+    const res = await saveRecipient(json("/api/recipients", { name: "mama", email }));
+    expect(res.status).toBe(400);
+    expect(h.query).not.toHaveBeenCalled();
+  });
+
+  it.each(["", "   ", "x".repeat(61)])("rejects name %j without saving", async (name) => {
+    const res = await saveRecipient(json("/api/recipients", { name, email: "m@example.com" }));
+    expect(res.status).toBe(400);
+    expect(h.query).not.toHaveBeenCalled();
   });
 });

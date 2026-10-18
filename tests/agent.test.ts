@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const h = vi.hoisted(() => ({ query: vi.fn(), generate: vi.fn() }));
+const h = vi.hoisted(() => ({ query: vi.fn(), generate: vi.fn(), getReceipt: vi.fn() }));
 vi.mock("@/lib/db", () => ({ pool: { query: h.query } }));
 vi.mock("@/lib/gemini", () => ({ generate: h.generate, MODELS: ["m1", "m2"] }));
+vi.mock("@/lib/receipt", () => ({ getReceipt: h.getReceipt }));
 import { runAgent } from "@/lib/agent";
 
 const text = (t: string, model = "m1") => ({ res: { functionCalls: [], text: t }, model });
@@ -14,7 +15,7 @@ const mama = { name: "mama", paypal_email: "mama@example.com", country: "KE" };
 const ask = (t = "Tuma $50 kwa mama") => runAgent([{ role: "assistant", content: "Hi!" }, { role: "user", content: t }]);
 const toolReplyFor = (callIndex: number) => JSON.stringify(h.generate.mock.calls[callIndex][0].contents.at(-1));
 
-beforeEach(() => { h.query.mockReset(); h.generate.mockReset(); });
+beforeEach(() => { h.query.mockReset(); h.generate.mockReset(); h.getReceipt.mockReset(); });
 
 describe("runAgent: conversation handling", () => {
   it("returns the model's reply when no tool is needed", async () => {
@@ -86,20 +87,21 @@ describe("runAgent: prepare_quote", () => {
     expect(back).not.toContain("mama@example.com");
   });
 
-  it("returns a tool error and no pending quote when the recipient is unknown", async () => {
+  it("prepares the quote for a new recipient and lets the on-screen form collect the email", async () => {
     h.query.mockResolvedValue({ rows: [], rowCount: 0 });
-    h.generate.mockResolvedValueOnce(call("prepare_quote", { recipient_name: "shosho", amount_usd: 20, language: "en" })).mockResolvedValueOnce(text("What's their PayPal email?"));
+    h.generate.mockResolvedValueOnce(call("prepare_quote", { recipient_name: "shosho", amount_usd: 20, language: "en" })).mockResolvedValueOnce(text("Please fill in the details."));
     const out = await ask();
-    expect(out.pending).toBeNull();
-    expect(toolReplyFor(1)).toContain("Recipient not found");
+    expect(out.pending).toMatchObject({ recipientName: "shosho", recipientEmail: "", country: "KE", amountUsd: 20, quote: { totalUsdCents: 2060 } });
+    expect(toolReplyFor(1)).toContain('"details_needed":true');
+    expect(toolReplyFor(1)).toContain("Do not ask for the email in chat");
   });
 
-  it("refuses recipients whose email is still the setup placeholder", async () => {
+  it("treats a placeholder email as missing so the form asks for the real one", async () => {
     h.query.mockResolvedValue({ rows: [{ ...mama, paypal_email: "REPLACE-WITH-SANDBOX-PERSONAL-EMAIL" }], rowCount: 1 });
     h.generate.mockResolvedValueOnce(call("prepare_quote", { recipient_name: "mama", amount_usd: 20, language: "en" })).mockResolvedValueOnce(text("ok"));
     const out = await ask();
-    expect(out.pending).toBeNull();
-    expect(toolReplyFor(1)).toContain("no PayPal email");
+    expect(out.pending).toMatchObject({ recipientName: "mama", recipientEmail: "" });
+    expect(toolReplyFor(1)).toContain('"details_needed":true');
   });
 
   it.each([5000, 0.5, -10])("rejects an out-of-range amount of $%s", async (amount) => {
@@ -183,5 +185,57 @@ describe("runAgent: other tools", () => {
     const out = await ask();
     expect(out.reply).toBe("Sorry");
     expect(toolReplyFor(1)).toContain("db down");
+  });
+});
+
+describe("runAgent: receipts and the confirmation guard", () => {
+  it("returns the receipt of a finished transfer", async () => {
+    h.query.mockResolvedValue({ rowCount: 1, rows: [{ id: "abcdef12-0000", status: "delivered" }] });
+    h.getReceipt.mockResolvedValue("Mama received $50.00.");
+    h.generate.mockResolvedValueOnce(call("get_receipt", {})).mockResolvedValueOnce(text("ok"));
+    await ask("produce the receipt");
+    expect(h.getReceipt).toHaveBeenCalledWith("abcdef12-0000");
+    expect(toolReplyFor(1)).toContain("Mama received $50.00.");
+    expect(toolReplyFor(1)).toContain("ABCDEF12");
+  });
+
+  it("does not produce a receipt while the transfer is unfinished", async () => {
+    h.query.mockResolvedValue({ rowCount: 1, rows: [{ id: "T1", status: "payout_pending" }] });
+    h.generate.mockResolvedValueOnce(call("get_receipt", {})).mockResolvedValueOnce(text("ok"));
+    await ask("receipt please");
+    expect(h.getReceipt).not.toHaveBeenCalled();
+    expect(toolReplyFor(1)).toContain("isn't finished");
+    expect(toolReplyFor(1)).toContain("payout_pending");
+  });
+
+  it("reports that nothing was found when there are no transfers", async () => {
+    h.query.mockResolvedValue({ rowCount: 0, rows: [] });
+    h.generate.mockResolvedValueOnce(call("get_receipt", {})).mockResolvedValueOnce(text("ok"));
+    await ask("receipt please");
+    expect(toolReplyFor(1)).toContain('"found":false');
+  });
+
+  it("tells the model a quote is waiting when the UI says so (so it never claims the transfer is processing)", async () => {
+    h.generate.mockResolvedValueOnce(text("Press Confirm and pay on the card."));
+    await runAgent([{ role: "user", content: "i have reviewed it" }], { awaiting: { recipient: "mama", amountUsd: 50 } });
+    const sys = h.generate.mock.calls[0][0].config.systemInstruction;
+    expect(sys).toContain("CURRENT STATE");
+    expect(sys).toContain("$50 for mama");
+    expect(sys).toContain("Nothing has been paid or sent yet");
+  });
+
+  it("adds no state note when nothing is waiting", async () => {
+    h.generate.mockResolvedValueOnce(text("ok"));
+    await ask("hello");
+    expect(h.generate.mock.calls[0][0].config.systemInstruction).not.toContain("CURRENT STATE");
+  });
+
+  it("always instructs the model that only the card button moves money", async () => {
+    h.generate.mockResolvedValueOnce(text("ok"));
+    await ask("hello");
+    const sys = h.generate.mock.calls[0][0].config.systemInstruction;
+    expect(sys).toContain('presses "Confirm and pay" on the card');
+    expect(sys).toContain("do NOT say the transfer is processing or sent");
+    expect(sys).toContain("do not ask for the email in chat");
   });
 });

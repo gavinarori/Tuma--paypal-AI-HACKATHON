@@ -1,6 +1,7 @@
 import { Type, ThinkingLevel, type Content, type FunctionDeclaration, type Part } from "@google/genai";
 import { pool } from "./db";
 import { getQuote, type Quote } from "./quote";
+import { getReceipt } from "./receipt";
 import { generate, MODELS } from "./gemini";
 
 const OWNER = "demo"; // single demo user; replace with real auth later
@@ -35,7 +36,9 @@ RULES
 - The recipient receives USD in their own PayPal account (they can withdraw it locally). Local-currency figures are indicative only.
 - You can only PREPARE a transfer with prepare_quote. The app then shows a confirmation card. Never say money has been sent; tell the user to review the card and confirm.
 - Never invent or calculate amounts, fees or exchange rates. Only repeat numbers returned by tools.
-- If the recipient is not found, ask for their PayPal email address and call save_recipient.
+- The app collects the recipient's name and PayPal email in a form on screen, so do not ask for the email in chat. Call prepare_quote even when the recipient is new or has no email saved; the app then shows the form.
+- Money only moves when the user presses "Confirm and pay" on the card and approves in PayPal. If the user says in chat that they reviewed, agree or confirm, do NOT say the transfer is processing or sent. Tell them to press the button on the card.
+- For a receipt or "what happened to my transfer", call get_receipt or get_transfer_status. Only describe outcomes a tool returned; if a tool fails or returns nothing, say you couldn't find it and never invent one.
 - If the amount or recipient is unclear, ask one short question.
 - For "where is my money" questions, call get_transfer_status.
 - Decline anything unrelated to sending money or checking a transfer.`;
@@ -72,6 +75,11 @@ const declarations: FunctionDeclaration[] = [
   {
     name: "get_transfer_status",
     description: "Get status and timeline of a transfer. Omit transfer_id for the latest one.",
+    parameters: { type: Type.OBJECT, properties: { transfer_id: { type: Type.STRING } } },
+  },
+  {
+    name: "get_receipt",
+    description: "Get the receipt of a finished transfer (delivered or failed). Omit transfer_id for the latest one.",
     parameters: { type: Type.OBJECT, properties: { transfer_id: { type: Type.STRING } } },
   },
 ];
@@ -113,26 +121,28 @@ async function runTool(name: string, input: Record<string, unknown>, ctx: Ctx): 
     }
     if (name === "prepare_quote") {
       const r = await findRecipient(String(input.recipient_name));
-      if (!r) return JSON.stringify({ error: "Recipient not found. Ask for their PayPal email address." });
-      if (!r.paypal_email || r.paypal_email.startsWith("REPLACE")) return JSON.stringify({ error: "This recipient has no PayPal email yet. Ask for it." });
+      // A new recipient (or one with no usable email) is fine: the on-screen form collects the details.
+      const email = r?.paypal_email && !r.paypal_email.startsWith("REPLACE") ? r.paypal_email : "";
+      const recipientName = r?.name ?? String(input.recipient_name).trim();
+      const country = r?.country ?? "KE";
       const amountUsd = Number(input.amount_usd);
-      const quote = getQuote(Math.round(amountUsd * 100), r.country);
+      const quote = getQuote(Math.round(amountUsd * 100), country);
       ctx.pending = {
         senderName: "Demo Sender",
-        recipientName: r.name,
-        recipientEmail: r.paypal_email,
-        country: r.country,
+        recipientName,
+        recipientEmail: email,
+        country,
         purpose: input.purpose ? String(input.purpose) : null,
         language: String(input.language ?? "en"),
         amountUsd,
         quote,
       };
       return JSON.stringify({
-        ok: true, recipient: r.name, amount_usd: amountUsd,
+        ok: true, recipient: recipientName, details_needed: !email, amount_usd: amountUsd,
         fee_usd: quote.feeUsdCents / 100, total_usd: quote.totalUsdCents / 100,
         fx_rate_indicative: quote.fxRate,
         recipient_receives: `${amountUsd} USD in their PayPal account (about ${quote.payoutLocalAmount} ${quote.payoutCurrency}, indicative)`,
-        note: "A confirmation card is now shown to the user.",
+        note: "The app now shows the user a form for the recipient's name and PayPal email, then a review card. Do not ask for the email in chat.",
       });
     }
     if (name === "get_transfer_status") {
@@ -144,13 +154,26 @@ async function runTool(name: string, input: Record<string, unknown>, ctx: Ctx): 
       const ev = await pool.query("SELECT to_status, created_at FROM transfer_events WHERE transfer_id=$1 ORDER BY id", [t.id]);
       return JSON.stringify({ id: t.id, recipient: t.recipient_name, status: t.status, amount_usd: t.amount_usd_cents / 100, timeline: ev.rows });
     }
+    if (name === "get_receipt") {
+      const r = input.transfer_id
+        ? await pool.query("SELECT id, status FROM transfers WHERE id=$1", [String(input.transfer_id)])
+        : await pool.query("SELECT id, status FROM transfers ORDER BY created_at DESC LIMIT 1");
+      if (!r.rowCount) return JSON.stringify({ found: false });
+      const { id, status } = r.rows[0];
+      if (!["delivered", "failed"].includes(status))
+        return JSON.stringify({ status, note: "This transfer isn't finished yet, so there is no receipt. Tell the user its current status." });
+      return JSON.stringify({ status, reference: String(id).slice(0, 8).toUpperCase(), receipt: await getReceipt(id) });
+    }
     return JSON.stringify({ error: "Unknown tool" });
   } catch (e) {
+    console.error(`tool ${name} failed:`, (e as Error).message); // shows the real cause in the npm run dev terminal
     return JSON.stringify({ error: (e as Error).message });
   }
 }
 
-export async function runAgent(history: ChatMsg[]) {
+export type Awaiting = { recipient: string; amountUsd: number } | null;
+
+export async function runAgent(history: ChatMsg[], opts: { awaiting?: Awaiting } = {}) {
   // Gemini wants the conversation to start with the user, so drop the leading assistant greeting.
   const first = history.findIndex((m) => m.role === "user");
   const contents: Content[] = history.slice(Math.max(first, 0)).map((m) => ({
@@ -158,11 +181,15 @@ export async function runAgent(history: ChatMsg[]) {
     parts: [{ text: m.content }],
   }));
   const ctx: Ctx = { pending: null };
+  // The UI tells us when a quote is on screen so the model never claims it was already paid
+  const awaitingNote = opts.awaiting
+    ? `\n\nCURRENT STATE: A quote of $${opts.awaiting.amountUsd} for ${opts.awaiting.recipient} is on screen, waiting for the user to press "Confirm and pay". Nothing has been paid or sent yet.`
+    : "";
   let models = MODELS;
 
   for (let i = 0; i < 6; i++) {
     const { res, model } = await generate(
-      { contents, config: { systemInstruction: SYSTEM, tools: [{ functionDeclarations: declarations }], thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } } },
+      { contents, config: { systemInstruction: SYSTEM + awaitingNote, tools: [{ functionDeclarations: declarations }], thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } } },
       models
     );
     models = [model]; // stay on the model that worked for the rest of this turn
