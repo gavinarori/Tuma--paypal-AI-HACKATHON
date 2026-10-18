@@ -1868,7 +1868,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$paypal$2f$react$2d$paypal$2d$js$2f$dist$2f$esm$2f$react$2d$paypal$2d$js$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@paypal/react-paypal-js/dist/esm/react-paypal-js.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$voice$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/lib/voice.ts [app-client] (ecmascript)");
 ;
-var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature(), _s2 = __turbopack_context__.k.signature();
+var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature(), _s2 = __turbopack_context__.k.signature(), _s3 = __turbopack_context__.k.signature();
 "use client";
 ;
 ;
@@ -2074,8 +2074,221 @@ const Row = ({ k, v, strong })=>/*#__PURE__*/ (0, __TURBOPACK__imported__module_
         columnNumber: 3
     }, ("TURBOPACK compile-time value", void 0));
 _c2 = Row;
-function QuoteCard({ p, onConfirm, onChange, confirming }) {
+function RecipientForm({ p, onSubmit, onCancel }) {
     _s1();
+    const [name, setName] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(p.recipientName);
+    const [email, setEmail] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(String(p.recipientEmail ?? ""));
+    const [save, setSave] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(true);
+    const [err, setErr] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
+    const [saving, setSaving] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const field = "min-h-11 w-full rounded-xl bg-background px-3 text-[0.9375rem] outline-none ring-1 ring-edge focus:ring-2 focus:ring-brand";
+    async function submit(e) {
+        e.preventDefault();
+        const n = name.trim(), em = email.trim();
+        if (!n) return setErr("Enter the recipient's name.");
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return setErr("Enter a valid PayPal email, like name@example.com.");
+        setErr("");
+        setSaving(true);
+        if (save) {
+            try {
+                await fetch("/api/recipients", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        name: n,
+                        email: em,
+                        country: p.country
+                    })
+                });
+            } catch  {}
+        }
+        setSaving(false);
+        onSubmit({
+            name: n,
+            email: em
+        });
+    }
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
+        ref: focusOnMount,
+        tabIndex: -1,
+        "aria-label": "Recipient details",
+        className: "slide-up rounded-3xl bg-surface p-5 ring-1 ring-line",
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                className: "text-lg font-bold",
+                children: [
+                    "Who is receiving ",
+                    usd(p.quote.amountUsdCents),
+                    "?"
+                ]
+            }, void 0, true, {
+                fileName: "[project]/src/app/page.tsx",
+                lineNumber: 100,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                className: "mt-1 text-sm text-muted",
+                children: "PayPal needs the email of the recipient's PayPal account. Check it carefully: a payment to the wrong email can't be undone."
+            }, void 0, false, {
+                fileName: "[project]/src/app/page.tsx",
+                lineNumber: 101,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
+                onSubmit: submit,
+                noValidate: true,
+                className: "mt-4 space-y-3",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                htmlFor: "r-name",
+                                className: "mb-1 block text-sm font-medium",
+                                children: "Recipient name"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/page.tsx",
+                                lineNumber: 104,
+                                columnNumber: 11
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                id: "r-name",
+                                value: name,
+                                onChange: (e)=>setName(e.target.value),
+                                autoComplete: "off",
+                                className: field
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/page.tsx",
+                                lineNumber: 105,
+                                columnNumber: 11
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/app/page.tsx",
+                        lineNumber: 103,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                htmlFor: "r-email",
+                                className: "mb-1 block text-sm font-medium",
+                                children: "Recipient's PayPal email"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/page.tsx",
+                                lineNumber: 108,
+                                columnNumber: 11
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                id: "r-email",
+                                type: "email",
+                                inputMode: "email",
+                                autoComplete: "off",
+                                autoCapitalize: "none",
+                                spellCheck: false,
+                                value: email,
+                                onChange: (e)=>setEmail(e.target.value),
+                                "aria-describedby": "r-email-help r-err",
+                                "aria-invalid": Boolean(err),
+                                placeholder: "name@example.com",
+                                className: field
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/page.tsx",
+                                lineNumber: 109,
+                                columnNumber: 11
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                id: "r-email-help",
+                                className: "mt-1 text-xs text-muted",
+                                children: "If they don't have a PayPal account yet, PayPal emails them a link to claim the money."
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/page.tsx",
+                                lineNumber: 111,
+                                columnNumber: 11
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/app/page.tsx",
+                        lineNumber: 107,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                        className: "flex min-h-11 items-center gap-3 text-sm",
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                type: "checkbox",
+                                checked: save,
+                                onChange: (e)=>setSave(e.target.checked),
+                                className: "h-5 w-5 accent-[var(--brand)]"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/page.tsx",
+                                lineNumber: 114,
+                                columnNumber: 11
+                            }, this),
+                            "Remember this recipient for next time"
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/app/page.tsx",
+                        lineNumber: 113,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        id: "r-err",
+                        role: "alert",
+                        className: "text-sm font-medium text-danger",
+                        children: err
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/page.tsx",
+                        lineNumber: 117,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "flex gap-2",
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                type: "submit",
+                                disabled: saving,
+                                className: "min-h-12 flex-1 rounded-full bg-brand py-3 font-semibold text-on-brand transition active:scale-[.98] disabled:opacity-60",
+                                children: "Continue to review"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/page.tsx",
+                                lineNumber: 119,
+                                columnNumber: 11
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                type: "button",
+                                onClick: onCancel,
+                                className: "min-h-12 rounded-full px-4 text-sm font-medium text-muted hover:text-foreground",
+                                children: "Cancel"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/page.tsx",
+                                lineNumber: 120,
+                                columnNumber: 11
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/app/page.tsx",
+                        lineNumber: 118,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/src/app/page.tsx",
+                lineNumber: 102,
+                columnNumber: 7
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/src/app/page.tsx",
+        lineNumber: 99,
+        columnNumber: 5
+    }, this);
+}
+_s1(RecipientForm, "DfXDbL8vhRp9FUtfuT5CXNCTrSo=");
+_c3 = RecipientForm;
+function QuoteCard({ p, onConfirm, onChange, confirming }) {
+    _s2();
     const q = p.quote;
     const shown = useCountUp(q.amountUsdCents / 100);
     const lang = String(p.language) in L ? String(p.language) : "en";
@@ -2095,7 +2308,7 @@ function QuoteCard({ p, onConfirm, onChange, confirming }) {
                         children: p.recipientName.slice(0, 1).toUpperCase()
                     }, void 0, false, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 85,
+                        lineNumber: 135,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2106,7 +2319,7 @@ function QuoteCard({ p, onConfirm, onChange, confirming }) {
                                 children: p.recipientName
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 87,
+                                lineNumber: 137,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2117,19 +2330,19 @@ function QuoteCard({ p, onConfirm, onChange, confirming }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 88,
+                                lineNumber: 138,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 86,
+                        lineNumber: 136,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 84,
+                lineNumber: 134,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2137,7 +2350,7 @@ function QuoteCard({ p, onConfirm, onChange, confirming }) {
                 children: t.get
             }, void 0, false, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 91,
+                lineNumber: 141,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2151,7 +2364,7 @@ function QuoteCard({ p, onConfirm, onChange, confirming }) {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 92,
+                        lineNumber: 142,
                         columnNumber: 69
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2162,13 +2375,13 @@ function QuoteCard({ p, onConfirm, onChange, confirming }) {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 92,
+                        lineNumber: 142,
                         columnNumber: 120
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 92,
+                lineNumber: 142,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2182,7 +2395,7 @@ function QuoteCard({ p, onConfirm, onChange, confirming }) {
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 93,
+                lineNumber: 143,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("dl", {
@@ -2193,7 +2406,7 @@ function QuoteCard({ p, onConfirm, onChange, confirming }) {
                         v: p.purpose
                     }, void 0, false, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 95,
+                        lineNumber: 145,
                         columnNumber: 56
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Row, {
@@ -2201,7 +2414,7 @@ function QuoteCard({ p, onConfirm, onChange, confirming }) {
                         v: usd(q.amountUsdCents)
                     }, void 0, false, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 96,
+                        lineNumber: 146,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Row, {
@@ -2209,7 +2422,7 @@ function QuoteCard({ p, onConfirm, onChange, confirming }) {
                         v: usd(q.feeUsdCents)
                     }, void 0, false, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 97,
+                        lineNumber: 147,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Row, {
@@ -2218,13 +2431,13 @@ function QuoteCard({ p, onConfirm, onChange, confirming }) {
                         strong: true
                     }, void 0, false, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 98,
+                        lineNumber: 148,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 94,
+                lineNumber: 144,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2235,7 +2448,7 @@ function QuoteCard({ p, onConfirm, onChange, confirming }) {
                 children: confirming ? "Starting payment…" : t.confirm
             }, void 0, false, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 100,
+                lineNumber: 150,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2244,22 +2457,22 @@ function QuoteCard({ p, onConfirm, onChange, confirming }) {
                 children: t.change
             }, void 0, false, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 101,
+                lineNumber: 151,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/page.tsx",
-        lineNumber: 83,
+        lineNumber: 133,
         columnNumber: 5
     }, this);
 }
-_s1(QuoteCard, "8FLAbCVHPE/QfFcu/7UkOIkZXKw=", false, function() {
+_s2(QuoteCard, "8FLAbCVHPE/QfFcu/7UkOIkZXKw=", false, function() {
     return [
         useCountUp
     ];
 });
-_c3 = QuoteCard;
+_c4 = QuoteCard;
 function Check() {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
         viewBox: "0 0 52 52",
@@ -2276,7 +2489,7 @@ function Check() {
                 strokeWidth: "3"
             }, void 0, false, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 109,
+                lineNumber: 159,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
@@ -2289,17 +2502,17 @@ function Check() {
                 strokeLinejoin: "round"
             }, void 0, false, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 110,
+                lineNumber: 160,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/page.tsx",
-        lineNumber: 108,
+        lineNumber: 158,
         columnNumber: 5
     }, this);
 }
-_c4 = Check;
+_c5 = Check;
 function Timeline({ t }) {
     const done = new Set(t.events.map((e)=>e.to_status));
     const failed = t.transfer.status === "failed";
@@ -2322,7 +2535,7 @@ function Timeline({ t }) {
                                 children: isDone ? "✓" : i + 1
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 129,
+                                lineNumber: 179,
                                 columnNumber: 15
                             }, this),
                             active && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2330,13 +2543,13 @@ function Timeline({ t }) {
                                 className: "ring absolute inset-0 rounded-full bg-warn-soft"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 130,
+                                lineNumber: 180,
                                 columnNumber: 26
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 128,
+                        lineNumber: 178,
                         columnNumber: 13
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2347,14 +2560,14 @@ function Timeline({ t }) {
                                 children: isDone ? "Done: " : active ? "In progress: " : "Not started: "
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 132,
+                                lineNumber: 182,
                                 columnNumber: 79
                             }, this),
                             label
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 132,
+                        lineNumber: 182,
                         columnNumber: 13
                     }, this),
                     at && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2362,25 +2575,25 @@ function Timeline({ t }) {
                         children: time(at)
                     }, void 0, false, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 133,
+                        lineNumber: 183,
                         columnNumber: 20
                     }, this)
                 ]
             }, s.key, true, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 127,
+                lineNumber: 177,
                 columnNumber: 11
             }, this);
         })
     }, void 0, false, {
         fileName: "[project]/src/app/page.tsx",
-        lineNumber: 120,
+        lineNumber: 170,
         columnNumber: 5
     }, this);
 }
-_c5 = Timeline;
+_c6 = Timeline;
 function Home() {
-    _s2();
+    _s3();
     const [msgs, setMsgs] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([
         {
             role: "assistant",
@@ -2391,6 +2604,7 @@ function Home() {
     const [busy, setBusy] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [pending, setPending] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [checkout, setCheckout] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [details, setDetails] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [captured, setCaptured] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [track, setTrack] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
@@ -2422,6 +2636,12 @@ function Home() {
         receipt,
         busy
     ]);
+    // the quote plus the recipient details the sender confirmed in the form
+    const effective = pending && details ? {
+        ...pending,
+        recipientName: details.name,
+        recipientEmail: details.email
+    } : null;
     const stage = captured || track ? 3 : checkout ? 2 : pending ? 1 : 0;
     const finished = track ? [
         "delivered",
@@ -2439,12 +2659,14 @@ function Home() {
                 content: text
             }
         ];
+        const awaiting = pending && !checkout && !track ? {
+            recipient: pending.recipientName,
+            amountUsd: pending.amountUsd
+        } : null;
         setMsgs(next);
         setInput("");
         setBusy(true);
         setError("");
-        setPending(null);
-        setCheckout(null);
         try {
             const res = await fetch("/api/chat", {
                 method: "POST",
@@ -2452,7 +2674,8 @@ function Home() {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    messages: next
+                    messages: next,
+                    awaiting
                 })
             });
             const data = await res.json();
@@ -2464,7 +2687,16 @@ function Home() {
                     content: data.reply
                 }
             ]);
-            if (data.pending) setPending(data.pending);
+            if (data.pending) {
+                // a new quote replaces the old state; keep the confirmed details only if it is the same recipient
+                const np = data.pending;
+                setDetails((d)=>d && d.name.toLowerCase() === np.recipientName.toLowerCase() ? d : null);
+                setPending(np);
+                setCheckout(null);
+                setTrack(null);
+                setReceipt("");
+                setCaptured(false);
+            }
         } catch (e) {
             setMsgs(msgs);
             setInput(text); // put the message back so nothing is lost
@@ -2504,7 +2736,7 @@ function Home() {
         setTranscribing(false);
     }
     async function confirm() {
-        if (!pending || confirming) return;
+        if (!effective || confirming) return;
         setConfirming(true);
         setError("");
         try {
@@ -2513,7 +2745,7 @@ function Home() {
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify(pending)
+                body: JSON.stringify(effective)
             });
             const data = await res.json();
             if (!res.ok) setError(`Couldn't start the payment: ${data.error}`);
@@ -2544,7 +2776,18 @@ function Home() {
                 const rr = await fetch(`/api/transfers/${id}/receipt`, {
                     method: "POST"
                 });
-                if (rr.ok) setReceipt((await rr.json()).text);
+                if (rr.ok) {
+                    const text = (await rr.json()).text;
+                    setReceipt(text);
+                    // keep a record of the transaction in the conversation itself
+                    setMsgs((m)=>[
+                            ...m,
+                            {
+                                role: "assistant",
+                                content: `${text}\n\nReference: ${id.slice(0, 8).toUpperCase()}`
+                            }
+                        ]);
+                }
                 return;
             }
             await new Promise((r)=>setTimeout(r, 2000));
@@ -2555,6 +2798,7 @@ function Home() {
         setTrack(null);
         setReceipt("");
         setPending(null);
+        setDetails(null);
         setCheckout(null);
         setCaptured(false);
         setError("");
@@ -2570,7 +2814,7 @@ function Home() {
                 children: announce
             }, void 0, false, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 250,
+                lineNumber: 314,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("header", {
@@ -2597,17 +2841,17 @@ function Home() {
                                                 d: "M5 12h14M13 6l6 6-6 6"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/page.tsx",
-                                                lineNumber: 255,
+                                                lineNumber: 319,
                                                 columnNumber: 176
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/page.tsx",
-                                            lineNumber: 255,
+                                            lineNumber: 319,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/page.tsx",
-                                        lineNumber: 254,
+                                        lineNumber: 318,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2617,7 +2861,7 @@ function Home() {
                                                 children: "Tuma"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/page.tsx",
-                                                lineNumber: 258,
+                                                lineNumber: 322,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2625,19 +2869,19 @@ function Home() {
                                                 children: "Send money home"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/page.tsx",
-                                                lineNumber: 259,
+                                                lineNumber: 323,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/page.tsx",
-                                        lineNumber: 257,
+                                        lineNumber: 321,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 253,
+                                lineNumber: 317,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2645,26 +2889,26 @@ function Home() {
                                 children: "Sandbox: no real money"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 262,
+                                lineNumber: 326,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 252,
+                        lineNumber: 316,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Stepper, {
                         stage: stage
                     }, void 0, false, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 264,
+                        lineNumber: 328,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 251,
+                lineNumber: 315,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2686,25 +2930,25 @@ function Home() {
                                         children: me ? "You: " : "Tuma: "
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/page.tsx",
-                                        lineNumber: 272,
+                                        lineNumber: 336,
                                         columnNumber: 214
                                     }, this),
                                     m.content
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 272,
+                                lineNumber: 336,
                                 columnNumber: 15
                             }, this)
                         }, i, false, {
                             fileName: "[project]/src/app/page.tsx",
-                            lineNumber: 271,
+                            lineNumber: 335,
                             columnNumber: 13
                         }, this);
                     }),
                     busy && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Typing, {}, void 0, false, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 276,
+                        lineNumber: 340,
                         columnNumber: 18
                     }, this),
                     msgs.length === 1 && !busy && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2715,26 +2959,35 @@ function Home() {
                                 children: c
                             }, c, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 281,
+                                lineNumber: 345,
                                 columnNumber: 15
                             }, this))
                     }, void 0, false, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 279,
+                        lineNumber: 343,
                         columnNumber: 11
                     }, this),
-                    pending && !checkout && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(QuoteCard, {
+                    pending && !checkout && !details && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(RecipientForm, {
                         p: pending,
-                        confirming: confirming,
-                        onConfirm: confirm,
-                        onChange: ()=>{
+                        onSubmit: setDetails,
+                        onCancel: ()=>{
                             setPending(null);
                             inputRef.current?.focus();
                         }
                     }, void 0, false, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 286,
-                        columnNumber: 34
+                        lineNumber: 350,
+                        columnNumber: 46
+                    }, this),
+                    effective && !checkout && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(QuoteCard, {
+                        p: effective,
+                        confirming: confirming,
+                        onConfirm: confirm,
+                        onChange: ()=>setDetails(null)
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/page.tsx",
+                        lineNumber: 351,
+                        columnNumber: 36
                     }, this),
                     pending && checkout && !captured && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
                         className: "slide-up rounded-3xl bg-surface p-5 ring-1 ring-line",
@@ -2747,7 +3000,7 @@ function Home() {
                                 children: "You pay"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 290,
+                                lineNumber: 355,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2755,7 +3008,7 @@ function Home() {
                                 children: usd(pending.quote.totalUsdCents)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 291,
+                                lineNumber: 356,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2766,10 +3019,10 @@ function Home() {
                                     " to ",
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                         className: "capitalize",
-                                        children: pending.recipientName
+                                        children: (effective ?? pending).recipientName
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/page.tsx",
-                                        lineNumber: 292,
+                                        lineNumber: 357,
                                         columnNumber: 99
                                     }, this),
                                     ", including the ",
@@ -2778,7 +3031,7 @@ function Home() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 292,
+                                lineNumber: 357,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$paypal$2f$react$2d$paypal$2d$js$2f$dist$2f$esm$2f$react$2d$paypal$2d$js$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PayPalScriptProvider"], {
@@ -2808,18 +3061,18 @@ function Home() {
                                     onError: ()=>setError("PayPal couldn't complete the payment. Try again, or use a different payment method.")
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/page.tsx",
-                                    lineNumber: 294,
+                                    lineNumber: 359,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 293,
+                                lineNumber: 358,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 289,
+                        lineNumber: 354,
                         columnNumber: 11
                     }, this),
                     captured && !track && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -2830,14 +3083,14 @@ function Home() {
                                 className: "spinner h-5 w-5 rounded-full border-2 border-line border-t-brand"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 312,
+                                lineNumber: 377,
                                 columnNumber: 13
                             }, this),
                             "Payment approved. Confirming with PayPal…"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 311,
+                        lineNumber: 376,
                         columnNumber: 11
                     }, this),
                     track && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -2851,7 +3104,7 @@ function Home() {
                                 children: [
                                     track.transfer.status === "delivered" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Check, {}, void 0, false, {
                                         fileName: "[project]/src/app/page.tsx",
-                                        lineNumber: 320,
+                                        lineNumber: 385,
                                         columnNumber: 57
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2861,7 +3114,7 @@ function Home() {
                                                 children: track.transfer.status === "delivered" ? `Delivered to ${track.transfer.recipient_name}` : track.transfer.status === "failed" ? "Transfer didn't go through" : `On its way to ${track.transfer.recipient_name}`
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/page.tsx",
-                                                lineNumber: 322,
+                                                lineNumber: 387,
                                                 columnNumber: 17
                                             }, this),
                                             track.payoutStatus === "UNCLAIMED" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2869,26 +3122,26 @@ function Home() {
                                                 children: "That email has no PayPal account yet. PayPal emailed them a link to claim the money."
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/page.tsx",
-                                                lineNumber: 325,
+                                                lineNumber: 390,
                                                 columnNumber: 56
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/page.tsx",
-                                        lineNumber: 321,
+                                        lineNumber: 386,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 319,
+                                lineNumber: 384,
                                 columnNumber: 13
                             }, this),
                             track.transfer.status !== "failed" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Timeline, {
                                 t: track
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 328,
+                                lineNumber: 393,
                                 columnNumber: 52
                             }, this),
                             finished && !receipt && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2896,16 +3149,8 @@ function Home() {
                                 children: "Writing your receipt…"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 329,
+                                lineNumber: 394,
                                 columnNumber: 38
-                            }, this),
-                            receipt && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                className: `slide-up mt-4 rounded-2xl p-3.5 text-sm ${track.transfer.status === "failed" ? "bg-warn-soft text-warn" : "bg-brand-soft text-brand-ink"}`,
-                                children: receipt
-                            }, void 0, false, {
-                                fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 331,
-                                columnNumber: 15
                             }, this),
                             finished && checkout && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                 className: "mt-3 text-xs text-muted",
@@ -2916,13 +3161,13 @@ function Home() {
                                         children: checkout.transferId.slice(0, 8).toUpperCase()
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/page.tsx",
-                                        lineNumber: 333,
+                                        lineNumber: 395,
                                         columnNumber: 87
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 333,
+                                lineNumber: 395,
                                 columnNumber: 38
                             }, this),
                             finished && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2931,13 +3176,13 @@ function Home() {
                                 children: "Send another"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 335,
+                                lineNumber: 397,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 318,
+                        lineNumber: 383,
                         columnNumber: 11
                     }, this),
                     error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2946,20 +3191,20 @@ function Home() {
                         children: error
                     }, void 0, false, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 340,
+                        lineNumber: 402,
                         columnNumber: 19
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         ref: endRef
                     }, void 0, false, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 341,
+                        lineNumber: 403,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 267,
+                lineNumber: 331,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("footer", {
@@ -2979,7 +3224,7 @@ function Home() {
                                 children: "Message to Tuma. Say who to pay and how much."
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 346,
+                                lineNumber: 408,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2993,7 +3238,7 @@ function Home() {
                                 className: "min-w-0 flex-1 bg-transparent px-1 py-2 text-[0.9375rem] outline-none placeholder:text-muted"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 347,
+                                lineNumber: 409,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -3007,14 +3252,14 @@ function Home() {
                                         className: "ring absolute inset-0 rounded-full bg-danger/30"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/page.tsx",
-                                        lineNumber: 349,
+                                        lineNumber: 411,
                                         columnNumber: 27
                                     }, this),
                                     transcribing && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                         className: "spinner absolute h-5 w-5 rounded-full border-2 border-line border-t-brand"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/page.tsx",
-                                        lineNumber: 350,
+                                        lineNumber: 412,
                                         columnNumber: 30
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
@@ -3035,26 +3280,26 @@ function Home() {
                                                 rx: "3"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/page.tsx",
-                                                lineNumber: 351,
+                                                lineNumber: 413,
                                                 columnNumber: 252
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                                                 d: "M5 11a7 7 0 0 0 14 0M12 18v3"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/page.tsx",
-                                                lineNumber: 351,
+                                                lineNumber: 413,
                                                 columnNumber: 301
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/page.tsx",
-                                        lineNumber: 351,
+                                        lineNumber: 413,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 348,
+                                lineNumber: 410,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -3075,23 +3320,23 @@ function Home() {
                                         d: "M5 12h14M13 6l6 6-6 6"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/page.tsx",
-                                        lineNumber: 354,
+                                        lineNumber: 416,
                                         columnNumber: 174
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/page.tsx",
-                                    lineNumber: 354,
+                                    lineNumber: 416,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/page.tsx",
-                                lineNumber: 353,
+                                lineNumber: 415,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 345,
+                        lineNumber: 407,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3100,36 +3345,37 @@ function Home() {
                         children: !online ? "You're offline. Reconnect to send." : listening ? "Listening… tap the mic when you're done" : transcribing ? "Understanding what you said…" : ""
                     }, void 0, false, {
                         fileName: "[project]/src/app/page.tsx",
-                        lineNumber: 357,
+                        lineNumber: 419,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 344,
+                lineNumber: 406,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/page.tsx",
-        lineNumber: 249,
+        lineNumber: 313,
         columnNumber: 5
     }, this);
 }
-_s2(Home, "kC13XKXUjfsdUhy2b8MKG6O+vtA=", false, function() {
+_s3(Home, "UamdgRTIZDn3MRdDRQRN1LZ4DGE=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSyncExternalStore"]
     ];
 });
-_c6 = Home;
-var _c, _c1, _c2, _c3, _c4, _c5, _c6;
+_c7 = Home;
+var _c, _c1, _c2, _c3, _c4, _c5, _c6, _c7;
 __turbopack_context__.k.register(_c, "Stepper");
 __turbopack_context__.k.register(_c1, "Typing");
 __turbopack_context__.k.register(_c2, "Row");
-__turbopack_context__.k.register(_c3, "QuoteCard");
-__turbopack_context__.k.register(_c4, "Check");
-__turbopack_context__.k.register(_c5, "Timeline");
-__turbopack_context__.k.register(_c6, "Home");
+__turbopack_context__.k.register(_c3, "RecipientForm");
+__turbopack_context__.k.register(_c4, "QuoteCard");
+__turbopack_context__.k.register(_c5, "Check");
+__turbopack_context__.k.register(_c6, "Timeline");
+__turbopack_context__.k.register(_c7, "Home");
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }

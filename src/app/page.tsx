@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useSyncExternalStore } from "react";
+import { useRef, useState, useEffect, useSyncExternalStore, type FormEvent } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { startRecording } from "@/lib/voice";
 
@@ -74,6 +74,56 @@ const Row = ({ k, v, strong }: { k: string; v: string; strong?: boolean }) => (
   </div>
 );
 
+function RecipientForm({ p, onSubmit, onCancel }: { p: Pending; onSubmit: (d: { name: string; email: string }) => void; onCancel: () => void }) {
+  const [name, setName] = useState(p.recipientName);
+  const [email, setEmail] = useState(String(p.recipientEmail ?? ""));
+  const [save, setSave] = useState(true);
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+  const field = "min-h-11 w-full rounded-xl bg-background px-3 text-[0.9375rem] outline-none ring-1 ring-edge focus:ring-2 focus:ring-brand";
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    const n = name.trim(), em = email.trim();
+    if (!n) return setErr("Enter the recipient's name.");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return setErr("Enter a valid PayPal email, like name@example.com.");
+    setErr(""); setSaving(true);
+    if (save) {
+      try { await fetch("/api/recipients", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: n, email: em, country: p.country }) }); } catch { /* saving is optional */ }
+    }
+    setSaving(false);
+    onSubmit({ name: n, email: em });
+  }
+
+  return (
+    <section ref={focusOnMount} tabIndex={-1} aria-label="Recipient details" className="slide-up rounded-3xl bg-surface p-5 ring-1 ring-line">
+      <h2 className="text-lg font-bold">Who is receiving {usd(p.quote.amountUsdCents)}?</h2>
+      <p className="mt-1 text-sm text-muted">PayPal needs the email of the recipient&apos;s PayPal account. Check it carefully: a payment to the wrong email can&apos;t be undone.</p>
+      <form onSubmit={submit} noValidate className="mt-4 space-y-3">
+        <div>
+          <label htmlFor="r-name" className="mb-1 block text-sm font-medium">Recipient name</label>
+          <input id="r-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" className={field} />
+        </div>
+        <div>
+          <label htmlFor="r-email" className="mb-1 block text-sm font-medium">Recipient&apos;s PayPal email</label>
+          <input id="r-email" type="email" inputMode="email" autoComplete="off" autoCapitalize="none" spellCheck={false} value={email} onChange={(e) => setEmail(e.target.value)}
+            aria-describedby="r-email-help r-err" aria-invalid={Boolean(err)} placeholder="name@example.com" className={field} />
+          <p id="r-email-help" className="mt-1 text-xs text-muted">If they don&apos;t have a PayPal account yet, PayPal emails them a link to claim the money.</p>
+        </div>
+        <label className="flex min-h-11 items-center gap-3 text-sm">
+          <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} className="h-5 w-5 accent-[var(--brand)]" />
+          Remember this recipient for next time
+        </label>
+        <p id="r-err" role="alert" className="text-sm font-medium text-danger">{err}</p>
+        <div className="flex gap-2">
+          <button type="submit" disabled={saving} className="min-h-12 flex-1 rounded-full bg-brand py-3 font-semibold text-on-brand transition active:scale-[.98] disabled:opacity-60">Continue to review</button>
+          <button type="button" onClick={onCancel} className="min-h-12 rounded-full px-4 text-sm font-medium text-muted hover:text-foreground">Cancel</button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
 function QuoteCard({ p, onConfirm, onChange, confirming }: { p: Pending; onConfirm: () => void; onChange: () => void; confirming: boolean }) {
   const q = p.quote;
   const shown = useCountUp(q.amountUsdCents / 100);
@@ -146,6 +196,7 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
   const [checkout, setCheckout] = useState<{ transferId: string; orderId: string } | null>(null);
+  const [details, setDetails] = useState<{ name: string; email: string } | null>(null);
   const [captured, setCaptured] = useState(false);
   const [track, setTrack] = useState<Tracking | null>(null);
   const [error, setError] = useState("");
@@ -162,6 +213,8 @@ export default function Home() {
     endRef.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "end" });
   }, [msgs, pending, checkout, captured, track, receipt, busy]);
 
+  // the quote plus the recipient details the sender confirmed in the form
+  const effective = pending && details ? { ...pending, recipientName: details.name, recipientEmail: details.email } : null;
   const stage = captured || track ? 3 : checkout ? 2 : pending ? 1 : 0;
   const finished = track ? ["delivered", "failed"].includes(track.transfer.status) : false;
   // Spoken to screen readers whenever the transfer moves forward
@@ -175,13 +228,19 @@ export default function Home() {
     const text = (override ?? input).trim();
     if (!text || busy || !online) return;
     const next = [...msgs, { role: "user" as const, content: text }];
-    setMsgs(next); setInput(""); setBusy(true); setError(""); setPending(null); setCheckout(null);
+    const awaiting = pending && !checkout && !track ? { recipient: pending.recipientName, amountUsd: pending.amountUsd } : null;
+    setMsgs(next); setInput(""); setBusy(true); setError("");
     try {
-      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: next }) });
+      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: next, awaiting }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setMsgs([...next, { role: "assistant", content: data.reply }]);
-      if (data.pending) setPending(data.pending);
+      if (data.pending) {
+        // a new quote replaces the old state; keep the confirmed details only if it is the same recipient
+        const np = data.pending as Pending;
+        setDetails((d) => (d && d.name.toLowerCase() === np.recipientName.toLowerCase() ? d : null));
+        setPending(np); setCheckout(null); setTrack(null); setReceipt(""); setCaptured(false);
+      }
     } catch (e) {
       setMsgs(msgs); setInput(text); // put the message back so nothing is lost
       setError(`Tuma couldn't reply: ${(e as Error).message}. Your message is back in the box. Check your connection, then press Send.`);
@@ -211,10 +270,10 @@ export default function Home() {
   }
 
   async function confirm() {
-    if (!pending || confirming) return;
+    if (!effective || confirming) return;
     setConfirming(true); setError("");
     try {
-      const res = await fetch("/api/transfers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pending) });
+      const res = await fetch("/api/transfers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(effective) });
       const data = await res.json();
       if (!res.ok) setError(`Couldn't start the payment: ${data.error}`);
       else { setTrack(null); setReceipt(""); setCaptured(false); setCheckout({ transferId: data.transferId, orderId: data.orderId }); }
@@ -232,7 +291,12 @@ export default function Home() {
       setTrack(d);
       if (["delivered", "failed"].includes(d.transfer.status)) {
         const rr = await fetch(`/api/transfers/${id}/receipt`, { method: "POST" });
-        if (rr.ok) setReceipt((await rr.json()).text);
+        if (rr.ok) {
+          const text = (await rr.json()).text as string;
+          setReceipt(text);
+          // keep a record of the transaction in the conversation itself
+          setMsgs((m) => [...m, { role: "assistant", content: `${text}\n\nReference: ${id.slice(0, 8).toUpperCase()}` }]);
+        }
         return;
       }
       await new Promise((r) => setTimeout(r, 2000));
@@ -241,7 +305,7 @@ export default function Home() {
   }
 
   function reset() {
-    setTrack(null); setReceipt(""); setPending(null); setCheckout(null); setCaptured(false); setError("");
+    setTrack(null); setReceipt(""); setPending(null); setDetails(null); setCheckout(null); setCaptured(false); setError("");
     inputRef.current?.focus();
   }
 
@@ -283,13 +347,14 @@ export default function Home() {
           </div>
         )}
 
-        {pending && !checkout && <QuoteCard p={pending} confirming={confirming} onConfirm={confirm} onChange={() => { setPending(null); inputRef.current?.focus(); }} />}
+        {pending && !checkout && !details && <RecipientForm p={pending} onSubmit={setDetails} onCancel={() => { setPending(null); inputRef.current?.focus(); }} />}
+        {effective && !checkout && <QuoteCard p={effective} confirming={confirming} onConfirm={confirm} onChange={() => setDetails(null)} />}
 
         {pending && checkout && !captured && (
           <section className="slide-up rounded-3xl bg-surface p-5 ring-1 ring-line" aria-label="Pay with PayPal" ref={focusOnMount} tabIndex={-1}>
             <p className="text-sm text-muted">You pay</p>
             <p className="text-3xl font-bold tabular-nums">{usd(pending.quote.totalUsdCents)}</p>
-            <p className="mb-4 text-sm text-muted">to send {usd(pending.quote.amountUsdCents)} to <span className="capitalize">{pending.recipientName}</span>, including the {usd(pending.quote.feeUsdCents)} fee.</p>
+            <p className="mb-4 text-sm text-muted">to send {usd(pending.quote.amountUsdCents)} to <span className="capitalize">{(effective ?? pending).recipientName}</span>, including the {usd(pending.quote.feeUsdCents)} fee.</p>
             <PayPalScriptProvider options={{ clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID!, currency: "USD" }}>
               <PayPalButtons
                 style={{ layout: "vertical", shape: "pill", label: "pay" }}
@@ -327,9 +392,6 @@ export default function Home() {
             </div>
             {track.transfer.status !== "failed" && <Timeline t={track} />}
             {finished && !receipt && <p className="mt-4 text-sm text-muted">Writing your receipt…</p>}
-            {receipt && (
-              <p className={`slide-up mt-4 rounded-2xl p-3.5 text-sm ${track.transfer.status === "failed" ? "bg-warn-soft text-warn" : "bg-brand-soft text-brand-ink"}`}>{receipt}</p>
-            )}
             {finished && checkout && <p className="mt-3 text-xs text-muted">Reference <span className="select-all font-semibold text-foreground">{checkout.transferId.slice(0, 8).toUpperCase()}</span></p>}
             {finished && (
               <button onClick={reset} className="mt-4 w-full rounded-full bg-brand py-3 font-semibold text-on-brand transition active:scale-[.98]">Send another</button>
