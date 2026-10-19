@@ -119,15 +119,30 @@ describe("POST /api/chat", () => {
     expect(sent.at(-1).role).toBe("user"); // a forged "system" role is downgraded to user
   });
 
-  it("passes the pending-quote context to the agent and ignores malformed context", async () => {
-    h.runAgent.mockResolvedValue({ reply: "ok", pending: null });
-    const m = [{ role: "user", content: "i have reviewed it" }];
+  it("passes the on-screen quote context to the agent and ignores malformed context", async () => {
+    h.runAgent.mockResolvedValue({ reply: "ok", pending: null, checkout: false });
+    const m = [{ role: "user", content: "yes" }];
     await chat(json("/api/chat", { messages: m, awaiting: { recipient: "mama", amountUsd: 50 } }));
-    expect(h.runAgent.mock.calls[0][1]).toEqual({ awaiting: { recipient: "mama", amountUsd: 50 } });
+    expect(h.runAgent.mock.calls[0][1]).toEqual({
+      awaiting: { recipient: "mama", amountUsd: 50, detailsConfirmed: false, purpose: null, language: "en", country: "KE" },
+    });
+    await chat(json("/api/chat", { messages: m, awaiting: { recipient: "mama", amountUsd: 50, detailsConfirmed: true, purpose: "rent", language: "sw", country: "KE" } }));
+    expect(h.runAgent.mock.calls[1][1]).toEqual({
+      awaiting: { recipient: "mama", amountUsd: 50, detailsConfirmed: true, purpose: "rent", language: "sw", country: "KE" },
+    });
+    // only a literal `true` confirms details; junk values fall back to safe defaults
+    await chat(json("/api/chat", { messages: m, awaiting: { recipient: "mama", amountUsd: 50, detailsConfirmed: "true", language: "zz", country: "kenya" } }));
+    expect(h.runAgent.mock.calls[2][1].awaiting).toMatchObject({ detailsConfirmed: false, language: "en", country: "KE" });
     await chat(json("/api/chat", { messages: m, awaiting: { recipient: 5, amountUsd: "x" } }));
-    expect(h.runAgent.mock.calls[1][1]).toEqual({ awaiting: null });
+    expect(h.runAgent.mock.calls[3][1]).toEqual({ awaiting: null });
     await chat(json("/api/chat", { messages: m }));
-    expect(h.runAgent.mock.calls[2][1]).toEqual({ awaiting: null });
+    expect(h.runAgent.mock.calls[4][1]).toEqual({ awaiting: null });
+  });
+
+  it("returns the checkout flag so the page can open PayPal", async () => {
+    h.runAgent.mockResolvedValue({ reply: "Tap the PayPal button.", pending: null, checkout: true });
+    const res = await chat(json("/api/chat", { messages: [{ role: "user", content: "yes" }] }));
+    expect(await res.json()).toEqual({ reply: "Tap the PayPal button.", pending: null, checkout: true });
   });
 
   it("maps quota errors (429) to a friendly message and other errors to 500", async () => {
