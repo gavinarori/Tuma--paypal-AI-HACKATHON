@@ -20,7 +20,7 @@ beforeEach(() => { h.query.mockReset(); h.generate.mockReset(); h.getReceipt.moc
 describe("runAgent: conversation handling", () => {
   it("returns the model's reply when no tool is needed", async () => {
     h.generate.mockResolvedValueOnce(text("Habari! Unataka kutuma pesa kwa nani?"));
-    expect(await ask("Habari")).toEqual({ reply: "Habari! Unataka kutuma pesa kwa nani?", pending: null });
+    expect(await ask("Habari")).toEqual({ reply: "Habari! Unataka kutuma pesa kwa nani?", pending: null, checkout: false });
   });
 
   it("drops the leading assistant greeting so the conversation starts with the user", async () => {
@@ -179,12 +179,32 @@ describe("runAgent: other tools", () => {
     expect(toolReplyFor(1)).toContain("Unknown tool");
   });
 
-  it("turns database errors inside a tool into a tool error the model can see", async () => {
-    h.query.mockRejectedValue(new Error("db down"));
-    h.generate.mockResolvedValueOnce(call("find_recipient", { name: "mama" })).mockResolvedValueOnce(text("Sorry"));
+  it("logs a crashing tool and replaces the model's reply with an honest message (it can't pretend it worked)", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    h.query.mockRejectedValue(new Error('relation "recipients" does not exist'));
+    h.generate
+      .mockResolvedValueOnce(call("prepare_quote", { recipient_name: "mama", amount_usd: 50, language: "en" }))
+      .mockResolvedValueOnce(text("I've prepared your $50 transfer for mama. Please confirm on the card!"));
     const out = await ask();
-    expect(out.reply).toBe("Sorry");
-    expect(toolReplyFor(1)).toContain("db down");
+    expect(out.pending).toBeNull();
+    expect(out.reply).toContain("something went wrong on our side");
+    expect(out.reply).not.toContain("prepared your");
+    expect(toolReplyFor(1)).toContain("does not exist");
+    expect(log.mock.calls.flat().join(" ")).toContain("prepare_quote failed");
+  });
+
+  it.each([["sw", "Samahani"], ["fr", "Désolé"], ["pcm", "wahala"], ["xx", "something went wrong"]])("tells the user about a system failure in their language (%s)", async (language, word) => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    h.query.mockRejectedValue(new Error("db down"));
+    h.generate.mockResolvedValueOnce(call("prepare_quote", { recipient_name: "mama", amount_usd: 50, language })).mockResolvedValueOnce(text("ok"));
+    expect((await ask()).reply).toContain(word);
+  });
+
+  it("does not blame the system for the user's own mistakes (amount out of range)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    h.query.mockResolvedValue({ rows: [mama], rowCount: 1 });
+    h.generate.mockResolvedValueOnce(call("prepare_quote", { recipient_name: "mama", amount_usd: 5000, language: "en" })).mockResolvedValueOnce(text("The limit is $1,000."));
+    expect((await ask()).reply).toBe("The limit is $1,000.");
   });
 });
 
@@ -234,8 +254,67 @@ describe("runAgent: receipts and the confirmation guard", () => {
     h.generate.mockResolvedValueOnce(text("ok"));
     await ask("hello");
     const sys = h.generate.mock.calls[0][0].config.systemInstruction;
-    expect(sys).toContain('presses "Confirm and pay" on the card');
-    expect(sys).toContain("do NOT say the transfer is processing or sent");
-    expect(sys).toContain("do not ask for the email in chat");
+    expect(sys).toContain("call start_checkout");
+    expect(sys).toContain("Never say a transfer is processing, paid or sent unless a tool result says so");
+    expect(sys).toContain("If any tool returns an error, say so honestly");
+    expect(sys).toContain("call provide_recipient_email");
+  });
+});
+
+describe("runAgent: chat-driven checkout", () => {
+  const quoteOnScreen = { recipient: "mama", amountUsd: 50, detailsConfirmed: true, purpose: "rent", language: "sw", country: "KE" };
+
+  it("tells the model whether the recipient details are confirmed", async () => {
+    h.generate.mockResolvedValue(text("ok"));
+    await runAgent([{ role: "user", content: "ndiyo" }], { awaiting: quoteOnScreen });
+    expect(h.generate.mock.calls[0][0].config.systemInstruction).toContain("The recipient details ARE confirmed");
+    await runAgent([{ role: "user", content: "ndiyo" }], { awaiting: { ...quoteOnScreen, detailsConfirmed: false } });
+    expect(h.generate.mock.calls[1][0].config.systemInstruction).toContain("are NOT confirmed yet");
+  });
+
+  it("start_checkout opens PayPal when the user agrees and the details are confirmed", async () => {
+    h.generate.mockResolvedValueOnce(call("start_checkout", {})).mockResolvedValueOnce(text("Gusa kitufe cha PayPal ili kuidhinisha."));
+    const out = await runAgent([{ role: "user", content: "ndiyo, endelea" }], { awaiting: quoteOnScreen });
+    expect(out.checkout).toBe(true);
+    expect(out.reply).toBe("Gusa kitufe cha PayPal ili kuidhinisha.");
+    expect(toolReplyFor(1)).toContain("PayPal button is now shown");
+    expect(h.query).not.toHaveBeenCalled(); // opening checkout never writes anything itself
+  });
+
+  it("start_checkout refuses until the recipient details are confirmed", async () => {
+    h.generate.mockResolvedValueOnce(call("start_checkout", {})).mockResolvedValueOnce(text("Please press Continue first."));
+    const out = await runAgent([{ role: "user", content: "yes" }], { awaiting: { ...quoteOnScreen, detailsConfirmed: false } });
+    expect(out.checkout).toBe(false);
+    expect(toolReplyFor(1)).toContain("haven't been confirmed");
+  });
+
+  it("start_checkout refuses when there is no quote on screen", async () => {
+    h.generate.mockResolvedValueOnce(call("start_checkout", {})).mockResolvedValueOnce(text("What would you like to send?"));
+    const out = await ask("yes");
+    expect(out.checkout).toBe(false);
+    expect(toolReplyFor(1)).toContain("no quote on screen");
+  });
+
+  it("provide_recipient_email fills the typed email into the pending quote", async () => {
+    h.generate.mockResolvedValueOnce(call("provide_recipient_email", { email: " nobody-123@example.com " })).mockResolvedValueOnce(text("Check the form and press Continue."));
+    const out = await runAgent([{ role: "user", content: "nobody-123@example.com" }], { awaiting: quoteOnScreen });
+    expect(out.pending).toMatchObject({
+      recipientName: "mama", recipientEmail: "nobody-123@example.com", amountUsd: 50, purpose: "rent", language: "sw", country: "KE",
+      quote: { totalUsdCents: 5105 },
+    });
+    expect(out.checkout).toBe(false);
+  });
+
+  it("provide_recipient_email rejects an invalid email and when nothing is on screen", async () => {
+    h.generate.mockResolvedValueOnce(call("provide_recipient_email", { email: "not-an-email" })).mockResolvedValueOnce(text("ok"));
+    const bad = await runAgent([{ role: "user", content: "x" }], { awaiting: quoteOnScreen });
+    expect(bad.pending).toBeNull();
+    expect(toolReplyFor(1)).toContain("valid email");
+
+    h.generate.mockReset();
+    h.generate.mockResolvedValueOnce(call("provide_recipient_email", { email: "a@b.co" })).mockResolvedValueOnce(text("ok"));
+    const none = await ask("a@b.co");
+    expect(none.pending).toBeNull();
+    expect(toolReplyFor(1)).toContain("no quote on screen");
   });
 });

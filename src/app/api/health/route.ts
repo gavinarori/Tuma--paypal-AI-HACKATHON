@@ -31,12 +31,12 @@ export async function GET() {
     const tables = new Set(t.rows.map((r) => r.table_name));
     const missingTables = ["transfers", "transfer_events", "webhook_events", "recipients"].filter((x) => !tables.has(x));
     add("Database tables", !missingTables.length, missingTables.length ? `missing: ${missingTables.join(", ")}` : "all present",
-      "Run the migrations: DATABASE_URL=... sh db/migrate.sh (schema.sql, then 002, 003, 004 in order)");
+      "Restart npm run dev: the tables are created automatically on start. If this stays red, look for 'automatic database setup failed' in the terminal.");
     if (!missingTables.length) {
       const c = await pool.query("SELECT table_name || '.' || column_name AS c FROM information_schema.columns WHERE table_schema='public'");
       const cols = new Set(c.rows.map((r) => r.c));
       const missingCols = ["recipients.paypal_email", "transfers.recipient_email", "transfers.payout_batch_id", "transfers.receipt_text"].filter((x) => !cols.has(x));
-      add("Database columns", !missingCols.length, missingCols.length ? `missing: ${missingCols.join(", ")}` : "up to date", "Run db/003_paypal_payouts.sql and db/004_receipts.sql");
+      add("Database columns", !missingCols.length, missingCols.length ? `missing: ${missingCols.join(", ")}` : "up to date", "Restart npm run dev: the tables are created automatically on start. If this stays red, look for 'automatic database setup failed' in the terminal.");
       if (!missingCols.length) {
         const r = await pool.query("SELECT name, paypal_email FROM recipients WHERE owner='demo' ORDER BY name");
         const usable = r.rows.filter((x) => x.paypal_email && !String(x.paypal_email).startsWith("REPLACE"));

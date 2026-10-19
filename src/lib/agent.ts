@@ -36,9 +36,10 @@ RULES
 - The recipient receives USD in their own PayPal account (they can withdraw it locally). Local-currency figures are indicative only.
 - You can only PREPARE a transfer with prepare_quote. The app then shows a confirmation card. Never say money has been sent; tell the user to review the card and confirm.
 - Never invent or calculate amounts, fees or exchange rates. Only repeat numbers returned by tools.
-- The app collects the recipient's name and PayPal email in a form on screen, so do not ask for the email in chat. Call prepare_quote even when the recipient is new or has no email saved; the app then shows the form.
-- Money only moves when the user presses "Confirm and pay" on the card and approves in PayPal. If the user says in chat that they reviewed, agree or confirm, do NOT say the transfer is processing or sent. Tell them to press the button on the card.
-- For a receipt or "what happened to my transfer", call get_receipt or get_transfer_status. Only describe outcomes a tool returned; if a tool fails or returns nothing, say you couldn't find it and never invent one.
+- The app collects the recipient's name and PayPal email in a form on screen. Call prepare_quote even when the recipient is new or has no email saved; the app then shows the form. If the user types an email address in chat while a quote is on screen, call provide_recipient_email so the form is filled in, then tell them to check the details and press Continue.
+- Payment happens in PayPal. When the user clearly agrees in chat (yes, ok, confirm, sawa, ndiyo, oui, d'accord, "they are okay", "go ahead") and the current state says the recipient details are confirmed, call start_checkout, then tell them to tap the PayPal button to approve. If the details are not confirmed yet, tell them to check the recipient form and press Continue.
+- Never say a transfer is processing, paid or sent unless a tool result says so. If any tool returns an error, say so honestly and never pretend it worked.
+- For a receipt or "what happened to my transfer", call get_receipt or get_transfer_status. Only describe outcomes a tool returned; if nothing is found, say so.
 - If the amount or recipient is unclear, ask one short question.
 - For "where is my money" questions, call get_transfer_status.
 - Decline anything unrelated to sending money or checking a transfer.`;
@@ -82,6 +83,16 @@ const declarations: FunctionDeclaration[] = [
     description: "Get the receipt of a finished transfer (delivered or failed). Omit transfer_id for the latest one.",
     parameters: { type: Type.OBJECT, properties: { transfer_id: { type: Type.STRING } } },
   },
+  {
+    name: "provide_recipient_email",
+    description: "The user typed the recipient's PayPal email in chat while a quote is on screen. Fills it into the on-screen recipient form.",
+    parameters: { type: Type.OBJECT, properties: { email: { type: Type.STRING }, name: { type: Type.STRING, description: "Recipient name, only if the user gave one" } }, required: ["email"] },
+  },
+  {
+    name: "start_checkout",
+    description: "Open PayPal for the quote on screen after the user clearly confirms in chat. Only works when the recipient details are confirmed. Does not move money: the user still approves in PayPal.",
+    parameters: { type: Type.OBJECT, properties: {} },
+  },
 ];
 
 // "maman", "mum" and "mother" should all find a recipient saved as "mama".
@@ -100,10 +111,21 @@ async function findRecipient(name: string) {
   return r.rows[0] as { name: string; paypal_email: string; country: string } | undefined;
 }
 
-type Ctx = { pending: PendingQuote | null };
+type Ctx = { pending: PendingQuote | null; checkout: boolean; systemError: boolean; lang: string; awaiting: Awaiting };
+
+const USER_ERRORS = /^(Amount must be between|Unsupported destination)/; // the user's fault, not a system failure
+
+// Shown instead of the model's reply when a tool crashed, so the model can never pretend it worked.
+const TECH_TROUBLE: Record<string, string> = {
+  en: "Sorry, something went wrong on our side and I couldn't prepare that transfer. Nothing was charged. Please try again in a moment.",
+  sw: "Samahani, kuna hitilafu upande wetu na sikuweza kuandaa uhamisho huo. Hakuna pesa iliyokatwa. Tafadhali jaribu tena baada ya muda mfupi.",
+  fr: "Désolé, un problème est survenu de notre côté et je n'ai pas pu préparer ce transfert. Rien n'a été débité. Réessayez dans un instant.",
+  pcm: "Sorry, wahala dey our side and I no fit prepare that transfer. Dem no collect any money. Abeg try again small time.",
+};
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 async function runTool(name: string, input: Record<string, unknown>, ctx: Ctx): Promise<string> {
+  if (typeof input.language === "string") ctx.lang = input.language;
   try {
     if (name === "find_recipient") {
       const r = await findRecipient(String(input.name));
@@ -164,14 +186,40 @@ async function runTool(name: string, input: Record<string, unknown>, ctx: Ctx): 
         return JSON.stringify({ status, note: "This transfer isn't finished yet, so there is no receipt. Tell the user its current status." });
       return JSON.stringify({ status, reference: String(id).slice(0, 8).toUpperCase(), receipt: await getReceipt(id) });
     }
+    if (name === "provide_recipient_email") {
+      const a = ctx.awaiting;
+      if (!a) return JSON.stringify({ error: "There is no quote on screen. Prepare one first." });
+      const email = String(input.email ?? "").trim();
+      if (!EMAIL.test(email)) return JSON.stringify({ error: "That doesn't look like a valid email address." });
+      const country = a.country ?? "KE";
+      ctx.pending = {
+        senderName: "Demo Sender",
+        recipientName: input.name ? String(input.name).trim() : a.recipient,
+        recipientEmail: email,
+        country,
+        purpose: a.purpose ?? null,
+        language: a.language ?? ctx.lang,
+        amountUsd: a.amountUsd,
+        quote: getQuote(Math.round(a.amountUsd * 100), country),
+      };
+      return JSON.stringify({ ok: true, note: "The email is now filled into the on-screen form. Tell the user to check the details and press Continue to review." });
+    }
+    if (name === "start_checkout") {
+      if (!ctx.awaiting) return JSON.stringify({ error: "There is no quote on screen. Prepare one first." });
+      if (!ctx.awaiting.detailsConfirmed)
+        return JSON.stringify({ error: "The recipient details haven't been confirmed yet. Tell the user to check the recipient form and press Continue to review." });
+      ctx.checkout = true;
+      return JSON.stringify({ ok: true, note: "The PayPal button is now shown. Tell the user to tap the PayPal button to approve the payment. Nothing is paid until they approve in PayPal." });
+    }
     return JSON.stringify({ error: "Unknown tool" });
   } catch (e) {
     console.error(`tool ${name} failed:`, (e as Error).message); // shows the real cause in the npm run dev terminal
+    if (!USER_ERRORS.test((e as Error).message)) ctx.systemError = true;
     return JSON.stringify({ error: (e as Error).message });
   }
 }
 
-export type Awaiting = { recipient: string; amountUsd: number } | null;
+export type Awaiting = { recipient: string; amountUsd: number; detailsConfirmed?: boolean; purpose?: string | null; language?: string; country?: string } | null;
 
 export async function runAgent(history: ChatMsg[], opts: { awaiting?: Awaiting } = {}) {
   // Gemini wants the conversation to start with the user, so drop the leading assistant greeting.
@@ -180,11 +228,18 @@ export async function runAgent(history: ChatMsg[], opts: { awaiting?: Awaiting }
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.content }],
   }));
-  const ctx: Ctx = { pending: null };
-  // The UI tells us when a quote is on screen so the model never claims it was already paid
-  const awaitingNote = opts.awaiting
-    ? `\n\nCURRENT STATE: A quote of $${opts.awaiting.amountUsd} for ${opts.awaiting.recipient} is on screen, waiting for the user to press "Confirm and pay". Nothing has been paid or sent yet.`
+  const aw = opts.awaiting ?? null;
+  const ctx: Ctx = { pending: null, checkout: false, systemError: false, lang: aw?.language ?? "en", awaiting: aw };
+  // The UI tells us what is on screen so the model never claims something was paid when it was not
+  const awaitingNote = aw
+    ? `\n\nCURRENT STATE: A quote of $${aw.amountUsd} for ${aw.recipient} is on screen. The recipient details ${aw.detailsConfirmed ? "ARE confirmed" : "are NOT confirmed yet"}. Nothing has been paid or sent yet.`
     : "";
+  // If a tool crashed, replace the model's reply with an honest message (the model sometimes ignores tool errors)
+  const finish = (reply: string) => ({
+    reply: ctx.systemError && !ctx.pending && !ctx.checkout ? (TECH_TROUBLE[ctx.lang] ?? TECH_TROUBLE.en) : reply,
+    pending: ctx.pending,
+    checkout: ctx.checkout,
+  });
   let models = MODELS;
 
   for (let i = 0; i < 6; i++) {
@@ -195,7 +250,7 @@ export async function runAgent(history: ChatMsg[], opts: { awaiting?: Awaiting }
     models = [model]; // stay on the model that worked for the rest of this turn
     const calls = res.functionCalls ?? [];
     if (!calls.length) {
-      return { reply: (res.text ?? "").trim() || "Sorry, I didn't catch that. Could you say it again?", pending: ctx.pending };
+      return finish((res.text ?? "").trim() || "Sorry, I didn't catch that. Could you say it again?");
     }
     const modelContent = res.candidates?.[0]?.content;
     if (modelContent) contents.push(modelContent);
@@ -206,5 +261,5 @@ export async function runAgent(history: ChatMsg[], opts: { awaiting?: Awaiting }
     }
     contents.push({ role: "user", parts });
   }
-  return { reply: "Sorry, I couldn't finish that. Please try again.", pending: ctx.pending };
+  return finish("Sorry, I couldn't finish that. Please try again.");
 }

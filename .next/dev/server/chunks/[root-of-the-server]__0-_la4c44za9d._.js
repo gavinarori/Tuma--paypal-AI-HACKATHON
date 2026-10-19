@@ -61,7 +61,7 @@ async function GET() {
             "webhook_events",
             "recipients"
         ].filter((x)=>!tables.has(x));
-        add("Database tables", !missingTables.length, missingTables.length ? `missing: ${missingTables.join(", ")}` : "all present", "Run the migrations: DATABASE_URL=... sh db/migrate.sh (schema.sql, then 002, 003, 004 in order)");
+        add("Database tables", !missingTables.length, missingTables.length ? `missing: ${missingTables.join(", ")}` : "all present", "Restart npm run dev: the tables are created automatically on start. If this stays red, look for 'automatic database setup failed' in the terminal.");
         if (!missingTables.length) {
             const c = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["pool"].query("SELECT table_name || '.' || column_name AS c FROM information_schema.columns WHERE table_schema='public'");
             const cols = new Set(c.rows.map((r)=>r.c));
@@ -71,7 +71,7 @@ async function GET() {
                 "transfers.payout_batch_id",
                 "transfers.receipt_text"
             ].filter((x)=>!cols.has(x));
-            add("Database columns", !missingCols.length, missingCols.length ? `missing: ${missingCols.join(", ")}` : "up to date", "Run db/003_paypal_payouts.sql and db/004_receipts.sql");
+            add("Database columns", !missingCols.length, missingCols.length ? `missing: ${missingCols.join(", ")}` : "up to date", "Restart npm run dev: the tables are created automatically on start. If this stays red, look for 'automatic database setup failed' in the terminal.");
             if (!missingCols.length) {
                 const r = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["pool"].query("SELECT name, paypal_email FROM recipients WHERE owner='demo' ORDER BY name");
                 const usable = r.rows.filter((x)=>x.paypal_email && !String(x.paypal_email).startsWith("REPLACE"));

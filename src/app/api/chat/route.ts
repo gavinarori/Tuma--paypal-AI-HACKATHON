@@ -12,7 +12,15 @@ export async function POST(req: Request) {
       content: String(m.content).slice(0, 2000),
     }));
     const aw = awaiting && typeof awaiting.recipient === "string" && Number.isFinite(Number(awaiting.amountUsd))
-      ? { recipient: awaiting.recipient.slice(0, 60), amountUsd: Number(awaiting.amountUsd) } : null;
+      ? {
+          recipient: awaiting.recipient.slice(0, 60),
+          amountUsd: Number(awaiting.amountUsd),
+          detailsConfirmed: awaiting.detailsConfirmed === true,
+          purpose: typeof awaiting.purpose === "string" ? awaiting.purpose.slice(0, 200) : null,
+          language: ["en", "sw", "fr", "pcm"].includes(awaiting.language) ? awaiting.language : "en",
+          country: /^[A-Z]{2}$/.test(String(awaiting.country)) ? String(awaiting.country) : "KE",
+        }
+      : null;
     return NextResponse.json(await runAgent(clean, { awaiting: aw }));
   } catch (e) {
     const status = (e as { status?: number }).status;

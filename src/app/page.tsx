@@ -27,6 +27,8 @@ const L = {
 // Stable callback ref: moves keyboard/screen-reader focus to a card when it first appears.
 const focusOnMount = (el: HTMLElement | null) => el?.focus({ preventScroll: true });
 const subscribeOnline = (cb: () => void) => { window.addEventListener("online", cb); window.addEventListener("offline", cb); return () => { window.removeEventListener("online", cb); window.removeEventListener("offline", cb); }; };
+// PayPal's checkout has no Swahili or Pidgin, so those users get English there (Tuma's own messages stay in their language)
+const PAYPAL_LOCALE: Record<string, string> = { en: "en_US", fr: "fr_FR", sw: "en_US", pcm: "en_US" };
 const CHIPS = ["Send $50 to mama for rent", "Tuma $30 kwa mama", "Envoie 40 dollars à mama", "Abeg send $20 give mama"];
 
 function useCountUp(target: number, ms = 700) {
@@ -228,7 +230,9 @@ export default function Home() {
     const text = (override ?? input).trim();
     if (!text || busy || !online) return;
     const next = [...msgs, { role: "user" as const, content: text }];
-    const awaiting = pending && !checkout && !track ? { recipient: pending.recipientName, amountUsd: pending.amountUsd } : null;
+    const awaiting = pending && !checkout && !track
+      ? { recipient: pending.recipientName, amountUsd: pending.amountUsd, detailsConfirmed: Boolean(details), purpose: pending.purpose ?? null, language: pending.language, country: pending.country }
+      : null;
     setMsgs(next); setInput(""); setBusy(true); setError("");
     try {
       const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: next, awaiting }) });
@@ -238,9 +242,10 @@ export default function Home() {
       if (data.pending) {
         // a new quote replaces the old state; keep the confirmed details only if it is the same recipient
         const np = data.pending as Pending;
-        setDetails((d) => (d && d.name.toLowerCase() === np.recipientName.toLowerCase() ? d : null));
+        setDetails((d) => (d && d.name.toLowerCase() === np.recipientName.toLowerCase() && (!np.recipientEmail || String(np.recipientEmail).toLowerCase() === d.email.toLowerCase()) ? d : null));
         setPending(np); setCheckout(null); setTrack(null); setReceipt(""); setCaptured(false);
       }
+      if (data.checkout) await confirm(); // the user agreed in chat: open the PayPal step for them
     } catch (e) {
       setMsgs(msgs); setInput(text); // put the message back so nothing is lost
       setError(`Tuma couldn't reply: ${(e as Error).message}. Your message is back in the box. Check your connection, then press Send.`);
@@ -355,7 +360,7 @@ export default function Home() {
             <p className="text-sm text-muted">You pay</p>
             <p className="text-3xl font-bold tabular-nums">{usd(pending.quote.totalUsdCents)}</p>
             <p className="mb-4 text-sm text-muted">to send {usd(pending.quote.amountUsdCents)} to <span className="capitalize">{(effective ?? pending).recipientName}</span>, including the {usd(pending.quote.feeUsdCents)} fee.</p>
-            <PayPalScriptProvider options={{ clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID!, currency: "USD" }}>
+            <PayPalScriptProvider options={{ clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID!, currency: "USD", locale: PAYPAL_LOCALE[String(pending?.language)] ?? "en_US" }}>
               <PayPalButtons
                 style={{ layout: "vertical", shape: "pill", label: "pay" }}
                 createOrder={async () => checkout.orderId}
