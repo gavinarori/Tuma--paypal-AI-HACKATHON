@@ -613,7 +613,7 @@ const LANGS = {
     fr: "French",
     pcm: "Nigerian Pidgin"
 };
-async function getReceipt(transferId) {
+async function getReceipt(transferId, opts = {}) {
     const r = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["pool"].query("SELECT * FROM transfers WHERE id=$1", [
         transferId
     ]);
@@ -679,6 +679,20 @@ async function getReceipt(transferId) {
         transferId,
         text
     ]);
+    // Put the transaction record into the chat history (once: later calls return the cached receipt above)
+    if (opts.record && t.conversation_id) {
+        try {
+            await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["pool"].query("INSERT INTO messages (conversation_id, role, content) VALUES ($1, 'assistant', $2)", [
+                t.conversation_id,
+                `${text}\n\nReference: ${String(transferId).slice(0, 8).toUpperCase()}`
+            ]);
+            await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["pool"].query("UPDATE conversations SET updated_at = now() WHERE id = $1", [
+                t.conversation_id
+            ]);
+        } catch (e) {
+            console.error("recording the receipt in the chat failed:", e.message);
+        }
+    }
     return text;
 }
 __turbopack_async_result__();

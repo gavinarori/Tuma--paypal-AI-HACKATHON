@@ -92,3 +92,42 @@ describe("getReceipt", () => {
     expect(JSON.parse(h.generate.mock.calls[0][0].contents[0].parts[0].text)).toEqual({ outcome: "failed", recipient: "mama", total_paid_usd: 51.05, refunded: true });
   });
 });
+
+describe("getReceipt: recording the transaction in the chat history", () => {
+  const inChat = { ...base, conversation_id: "C9" };
+  const inserted = () => h.query.mock.calls.find(([sql]) => String(sql).startsWith("INSERT INTO messages"));
+
+  it("adds the receipt and reference to the conversation once, when it is first generated", async () => {
+    db(inChat);
+    h.generate.mockResolvedValue({ res: { text: "Mama amepokea $50." }, model: "m1" });
+    await getReceipt("abcdef12-3456", { record: true });
+    expect(inserted()?.[1]).toEqual(["C9", "Mama amepokea $50.\n\nReference: ABCDEF12"]);
+    expect(h.query.mock.calls.some(([sql]) => String(sql).startsWith("UPDATE conversations SET updated_at"))).toBe(true);
+  });
+
+  it("does not record again when the receipt is already cached", async () => {
+    db({ ...inChat, receipt_text: "Cached receipt" });
+    await getReceipt("T1", { record: true });
+    expect(inserted()).toBeUndefined();
+  });
+
+  it("does not record when asked not to (the agent's get_receipt tool) or when the transfer has no conversation", async () => {
+    db(inChat);
+    h.generate.mockResolvedValue({ res: { text: "ok" }, model: "m1" });
+    await getReceipt("T1");
+    expect(inserted()).toBeUndefined();
+    db(base);
+    await getReceipt("T1", { record: true });
+    expect(inserted()).toBeUndefined();
+  });
+
+  it("still returns the receipt if saving it to the chat fails", async () => {
+    h.query.mockImplementation(async (sql: string) => {
+      if (sql.startsWith("SELECT * FROM transfers")) return { rows: [inChat] };
+      if (sql.startsWith("INSERT INTO messages")) throw new Error("db down");
+      return { rows: [] };
+    });
+    h.generate.mockResolvedValue({ res: { text: "Asante" }, model: "m1" });
+    expect(await getReceipt("T1", { record: true })).toBe("Asante");
+  });
+});

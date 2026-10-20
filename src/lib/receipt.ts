@@ -5,7 +5,7 @@ import { generate } from "./gemini";
 const LANGS: Record<string, string> = { en: "English", sw: "Swahili", fr: "French", pcm: "Nigerian Pidgin" };
 
 /** Localised receipt for a finished transfer (delivered or failed). Cached in the DB. */
-export async function getReceipt(transferId: string): Promise<string | null> {
+export async function getReceipt(transferId: string, opts: { record?: boolean } = {}): Promise<string | null> {
   const r = await pool.query("SELECT * FROM transfers WHERE id=$1", [transferId]);
   const t = r.rows[0];
   if (!t || !["delivered", "failed"].includes(t.status)) return null;
@@ -44,5 +44,14 @@ export async function getReceipt(transferId: string): Promise<string | null> {
     console.error("receipt generation failed", (e as Error).message);
   }
   await pool.query("UPDATE transfers SET receipt_text=$2 WHERE id=$1", [transferId, text]);
+  // Put the transaction record into the chat history (once: later calls return the cached receipt above)
+  if (opts.record && t.conversation_id) {
+    try {
+      await pool.query("INSERT INTO messages (conversation_id, role, content) VALUES ($1, 'assistant', $2)", [t.conversation_id, `${text}\n\nReference: ${String(transferId).slice(0, 8).toUpperCase()}`]);
+      await pool.query("UPDATE conversations SET updated_at = now() WHERE id = $1", [t.conversation_id]);
+    } catch (e) {
+      console.error("recording the receipt in the chat failed:", (e as Error).message);
+    }
+  }
   return text;
 }
