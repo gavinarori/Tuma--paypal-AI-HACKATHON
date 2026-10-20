@@ -53,7 +53,8 @@ const FILES = [
     "schema.sql",
     "002_recipients.sql",
     "003_paypal_payouts.sql",
-    "004_receipts.sql"
+    "004_receipts.sql",
+    "005_conversations.sql"
 ];
 async function migrate() {
     for (const f of FILES){

@@ -59,7 +59,9 @@ async function GET() {
             "transfers",
             "transfer_events",
             "webhook_events",
-            "recipients"
+            "recipients",
+            "conversations",
+            "messages"
         ].filter((x)=>!tables.has(x));
         add("Database tables", !missingTables.length, missingTables.length ? `missing: ${missingTables.join(", ")}` : "all present", "Restart npm run dev: the tables are created automatically on start. If this stays red, look for 'automatic database setup failed' in the terminal.");
         if (!missingTables.length) {
@@ -69,7 +71,8 @@ async function GET() {
                 "recipients.paypal_email",
                 "transfers.recipient_email",
                 "transfers.payout_batch_id",
-                "transfers.receipt_text"
+                "transfers.receipt_text",
+                "transfers.conversation_id"
             ].filter((x)=>!cols.has(x));
             add("Database columns", !missingCols.length, missingCols.length ? `missing: ${missingCols.join(", ")}` : "up to date", "Restart npm run dev: the tables are created automatically on start. If this stays red, look for 'automatic database setup failed' in the terminal.");
             if (!missingCols.length) {
