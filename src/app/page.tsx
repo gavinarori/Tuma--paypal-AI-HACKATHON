@@ -470,7 +470,6 @@ export default function Home() {
       logRef.current?.focus();
     } catch (e) { setError(`Couldn't open that chat: ${(e as Error).message}`); }
   }
-
   async function deleteConversation(c: ConvoItem) {
     if (!window.confirm(`Delete the chat "${c.title}"? Its transactions and receipts are kept.`)) return;
     try {
@@ -480,7 +479,6 @@ export default function Home() {
       refreshLists();
     } catch (e) { setError(`Couldn't delete that chat: ${(e as Error).message}`); }
   }
-
   // Open a past transaction: its chat plus the live status card
   async function openTransfer(t: TransferItem) {
     if (busy) return;
@@ -498,12 +496,10 @@ export default function Home() {
       if (!isDone) poll(t.id);
     } catch (e) { setError(`Couldn't open that transaction: ${(e as Error).message}`); }
   }
-
   function reset() {
     setTrack(null); setReceipt(""); setPending(null); setDetails(null); setCheckout(null); setCaptured(false); setError("");
     inputRef.current?.focus();
   }
-
   return (
     <div className="mx-auto flex w-full max-w-4xl md:justify-center md:gap-4 md:p-4">
       <aside aria-label="Chat and transaction history" className="hidden w-72 shrink-0 flex-col overflow-hidden rounded-[2rem] bg-surface shadow-xl ring-1 ring-line md:flex md:h-[calc(100dvh-2rem)]">
