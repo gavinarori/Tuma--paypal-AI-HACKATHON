@@ -54,7 +54,8 @@ const FILES = [
     "002_recipients.sql",
     "003_paypal_payouts.sql",
     "004_receipts.sql",
-    "005_conversations.sql"
+    "005_conversations.sql",
+    "006_simulator.sql"
 ];
 async function migrate() {
     for (const f of FILES){

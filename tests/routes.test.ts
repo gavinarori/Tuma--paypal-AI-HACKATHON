@@ -99,6 +99,25 @@ describe("POST /api/transfers/[id]/capture", () => {
     expect(h.startPayout).toHaveBeenCalledWith("T1");
   });
 
+  it("still succeeds when PayPal's webhook already moved the transfer past 'paid' (race)", async () => {
+    h.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ paypal_order_id: "ORD1" }] }).mockResolvedValueOnce({ rows: [{ status: "payout_pending" }] });
+    h.captureOrder.mockResolvedValue(captured("COMPLETED"));
+    h.transition.mockRejectedValue(new Error("Illegal transition payout_pending -> paid"));
+    const res = await capture(json("/x", {}), params("T1"));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ status: "COMPLETED" });
+    expect(h.startPayout).toHaveBeenCalledWith("T1");
+  });
+
+  it("still reports a real failure to mark the transfer paid", async () => {
+    h.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ paypal_order_id: "ORD1" }] }).mockResolvedValueOnce({ rows: [{ status: "awaiting_payment" }] });
+    h.captureOrder.mockResolvedValue(captured("COMPLETED"));
+    h.transition.mockRejectedValue(new Error("db down"));
+    const res = await capture(json("/x", {}), params("T1"));
+    expect(res.status).toBe(400);
+    expect(h.startPayout).not.toHaveBeenCalled();
+  });
+
   it("does not mark paid or pay out when the capture is still pending or declined", async () => {
     h.query.mockResolvedValue({ rowCount: 1, rows: [{ paypal_order_id: "ORD1" }] });
     h.captureOrder.mockResolvedValue(captured("PENDING"));

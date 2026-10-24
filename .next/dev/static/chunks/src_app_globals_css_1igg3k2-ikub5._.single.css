@@ -391,6 +391,10 @@
     z-index: 40;
   }
 
+  .m-auto {
+    margin: auto;
+  }
+
   .mx-3 {
     margin-inline: calc(var(--spacing) * 3);
   }
@@ -619,6 +623,10 @@
     width: 85%;
   }
 
+  .w-\[min\(92vw\,26rem\)\] {
+    width: min(92vw, 26rem);
+  }
+
   .w-full {
     width: 100%;
   }
@@ -781,6 +789,10 @@
     border-top-color: var(--brand);
   }
 
+  .bg-\[\#ffc439\] {
+    background-color: #ffc439;
+  }
+
   .bg-background {
     background-color: var(--background);
   }
@@ -859,6 +871,10 @@
 
   .bg-warn-soft {
     background-color: var(--warn-soft);
+  }
+
+  .p-0 {
+    padding: 0;
   }
 
   .p-1 {
@@ -1054,6 +1070,10 @@
     white-space: pre-wrap;
   }
 
+  .text-\[\#10231c\] {
+    color: #10231c;
+  }
+
   .text-brand {
     color: var(--brand);
   }
@@ -1104,6 +1124,15 @@
     opacity: 0;
   }
 
+  .opacity-70 {
+    opacity: .7;
+  }
+
+  .shadow-2xl {
+    --tw-shadow: 0 25px 50px -12px var(--tw-shadow-color, #00000040);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+
   .shadow-xl {
     --tw-shadow: 0 20px 25px -5px var(--tw-shadow-color, #0000001a), 0 8px 10px -6px var(--tw-shadow-color, #0000001a);
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
@@ -1121,10 +1150,6 @@
 
   .ring-edge {
     --tw-ring-color: var(--edge);
-  }
-
-  .ring-gold {
-    --tw-ring-color: var(--gold);
   }
 
   .ring-gold\/70 {
@@ -1181,6 +1206,16 @@
 
   .placeholder\:text-muted::placeholder {
     color: var(--muted);
+  }
+
+  .backdrop\:bg-black\/50::backdrop {
+    background-color: #00000080;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .backdrop\:bg-black\/50::backdrop {
+      background-color: color-mix(in oklab, var(--color-black) 50%, transparent);
+    }
   }
 
   .focus-within\:ring-2:focus-within {

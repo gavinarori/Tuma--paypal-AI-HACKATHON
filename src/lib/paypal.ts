@@ -1,6 +1,9 @@
-export class PayPalError extends Error {
-  constructor(public status: number, message: string) { super(message); }
-}
+import { PayPalError } from "./paypal-error";
+import * as sim from "./paypal-sim";
+export { PayPalError };
+
+// With NEXT_PUBLIC_PAYPAL_MODE=simulate every call below is answered by the built-in simulator (no PayPal account needed).
+const simulated = () => process.env.NEXT_PUBLIC_PAYPAL_MODE === "simulate";
 
 const BASE = process.env.PAYPAL_API_BASE ?? "https://api-m.sandbox.paypal.com";
 
@@ -41,6 +44,7 @@ const usd = (cents: number) => (cents / 100).toFixed(2);
 
 /** Create an order. custom_id carries our transfer id so webhooks can find it. */
 export function createOrder(transferId: string, totalUsdCents: number, description: string) {
+  if (simulated()) return sim.createOrder(transferId, totalUsdCents, description);
   return pp<{ id: string }>("/v2/checkout/orders", {
     method: "POST",
     requestId: `order-${transferId}`, // idempotency
@@ -58,6 +62,7 @@ export function createOrder(transferId: string, totalUsdCents: number, descripti
 }
 
 export function captureOrder(orderId: string) {
+  if (simulated()) return sim.captureOrder(orderId);
   return pp<{
     status: string;
     purchase_units: { payments: { captures: { id: string; status: string }[] } }[];
@@ -70,6 +75,7 @@ export function captureOrder(orderId: string) {
 
 /** Verify a webhook with PayPal's verification endpoint. */
 export async function verifyWebhook(headers: Headers, rawBody: string): Promise<boolean> {
+  if (simulated()) return sim.verifyWebhook(headers);
   const result = await pp<{ verification_status: string }>(
     "/v1/notifications/verify-webhook-signature",
     {
@@ -90,6 +96,7 @@ export async function verifyWebhook(headers: Headers, rawBody: string): Promise<
 
 /** Send money to a recipient's PayPal account. sender_batch_id makes retries safe for 30 days. */
 export function createPayout(transferId: string, email: string, amountUsdCents: number, note: string) {
+  if (simulated()) return sim.createPayout(transferId, email, amountUsdCents);
   return pp<{ batch_header: { payout_batch_id: string; batch_status: string } }>("/v1/payments/payouts", {
     method: "POST",
     requestId: `payout-${transferId}`,
@@ -113,6 +120,7 @@ export function createPayout(transferId: string, email: string, amountUsdCents: 
 }
 
 export function getPayoutBatch(batchId: string) {
+  if (simulated()) return sim.getPayoutBatch(batchId);
   return pp<{
     batch_header: { batch_status: string };
     items?: { transaction_status: string }[];
@@ -121,6 +129,7 @@ export function getPayoutBatch(batchId: string) {
 
 /** Full refund of a captured payment. Idempotent per transfer. */
 export function refundCapture(captureId: string, transferId: string) {
+  if (simulated()) return sim.refundCapture(captureId, transferId);
   return pp<{ id: string; status: string }>(`/v2/payments/captures/${captureId}/refund`, {
     method: "POST",
     requestId: `refund-${transferId}`,

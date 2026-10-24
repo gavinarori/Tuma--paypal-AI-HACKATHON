@@ -3,7 +3,7 @@ import path from "node:path";
 import { pool } from "./db";
 
 // Every file is idempotent (IF NOT EXISTS / ON CONFLICT), so this is safe to run on every start.
-const FILES = ["schema.sql", "002_recipients.sql", "003_paypal_payouts.sql", "004_receipts.sql", "005_conversations.sql"];
+const FILES = ["schema.sql", "002_recipients.sql", "003_paypal_payouts.sql", "004_receipts.sql", "005_conversations.sql", "006_simulator.sql"];
 
 export async function migrate() {
   for (const f of FILES) {
