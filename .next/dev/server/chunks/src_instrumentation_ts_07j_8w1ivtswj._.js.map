@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/mac/Desktop/work/tuma%202/src/instrumentation.ts"],"sourcesContent":["// Next.js runs register() once when the server starts. We use it to create the database tables\n// automatically, so a missing migration can never break the chat. Set AUTO_MIGRATE=false to skip.\nexport async function register() {\n  if (process.env.NEXT_RUNTIME !== \"nodejs\" || process.env.AUTO_MIGRATE === \"false\") return;\n  try {\n    const { migrate } = await import(\"./lib/migrate\");\n    await migrate();\n    console.log(\"database ready\");\n  } catch (e) {\n    console.error(\"automatic database setup failed:\", (e as Error).message);\n  }\n}"],"names":["register","process","env","AUTO_MIGRATE","migrate","console","log","e","error","message"],"mappings":"AAAA,+FAA+F;AAC/F,kGAAkG;;;;;AAC3F,eAAeA;IACpB,IAAI,+CAA6B,YAAYC,QAAQC,GAAG,CAACC,YAAY,KAAK,SAAS;IACnF,IAAI;QACF,MAAM,EAAEC,OAAO,EAAE,GAAG;QACpB,MAAMA;QACNC,QAAQC,GAAG,CAAC;IACd,EAAE,OAAOC,GAAG;QACVF,QAAQG,KAAK,CAAC,oCAAoC,AAACD,EAAYE,OAAO;IACxE;AACF"}}]
-}

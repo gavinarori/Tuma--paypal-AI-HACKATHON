@@ -6,4 +6,9 @@ dist
 .DS_Store
 coverage
 .vite
-*.tsbuildinfo
+*.tsbuildinfo.next/
+node_modules/
+.env*
+.next/
+node_modules/
+.env*

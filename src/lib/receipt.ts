@@ -2,7 +2,8 @@ import { ThinkingLevel } from "@google/genai";
 import { pool } from "./db";
 import { generate } from "./gemini";
 
-const LANGS: Record<string, string> = { en: "English", sw: "Swahili", fr: "French", pcm: "Nigerian Pidgin" };
+import { languageName } from "./languages";
+import { simReceipt, simLang } from "./sim-text";
 
 /** Localised receipt for a finished transfer (delivered or failed). Cached in the DB. */
 export async function getReceipt(transferId: string, opts: { record?: boolean } = {}): Promise<string | null> {
@@ -30,12 +31,14 @@ export async function getReceipt(transferId: string, opts: { record?: boolean } 
   }
 
   let text = fallback;
-  try {
+  if (process.env.SIMULATE_AI === "true") {
+    text = simReceipt(simLang(t.language), facts); // simulated AI: no Gemini call
+  } else try {
     const { res } = await generate({
       contents: [{ role: "user", parts: [{ text: JSON.stringify(facts) }] }],
       config: {
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        systemInstruction: `You write short, warm payment receipts (max 3 sentences, plain text, no markdown) in ${LANGS[t.language] ?? "English"}. Use ONLY the facts given. Never invent or recompute numbers. If the outcome is failed, apologise briefly and say whether the money was refunded.`,
+        systemInstruction: `You write short, warm payment receipts (max 3 sentences, plain text, no markdown) in ${languageName(t.language)}. Use ONLY the facts given. Never invent or recompute numbers. If the outcome is failed, apologise briefly and say whether the money was refunded.`,
       },
     });
     const out = (res.text ?? "").trim();

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ThinkingLevel } from "@google/genai";
 import { pool } from "@/lib/db";
 import { generate } from "@/lib/gemini";
+import { isSimulated } from "@/lib/paypal-sim";
 
 // Open http://localhost:3000/api/health to see what is misconfigured. Development only.
 type Check = { name: string; ok: boolean; detail: string; fix?: string };
@@ -12,16 +13,18 @@ export async function GET() {
   const checks: Check[] = [];
   const add = (name: string, ok: boolean, detail: string, fix?: string) => checks.push({ name, ok, detail, ...(ok || !fix ? {} : { fix }) });
 
-  for (const k of ["DATABASE_URL", "PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET", "NEXT_PUBLIC_PAYPAL_CLIENT_ID", "GEMINI_API_KEY"]) {
+  const simPay = isSimulated();
+  const simAi = env.SIMULATE_AI === "true";
+  for (const k of ["DATABASE_URL", ...(simPay ? [] : ["PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET", "NEXT_PUBLIC_PAYPAL_CLIENT_ID"]), ...(simAi ? [] : ["GEMINI_API_KEY"])]) {
     const set = Boolean(env[k]?.trim());
     add(`Setting ${k}`, set, set ? "set" : "missing", `Add ${k} to .env.local, then restart npm run dev`);
   }
-  if (env.PAYPAL_CLIENT_ID && env.NEXT_PUBLIC_PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_ID.trim() !== env.NEXT_PUBLIC_PAYPAL_CLIENT_ID.trim()) {
+  if (!simPay && env.PAYPAL_CLIENT_ID && env.NEXT_PUBLIC_PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_ID.trim() !== env.NEXT_PUBLIC_PAYPAL_CLIENT_ID.trim()) {
     add("NEXT_PUBLIC_PAYPAL_CLIENT_ID matches PAYPAL_CLIENT_ID", false, "different values", "Both must be the same sandbox client ID");
   }
   const base = (env.PAYPAL_API_BASE ?? "https://api-m.sandbox.paypal.com").trim();
   const baseOk = /^https:\/\/api-m\.(sandbox\.)?paypal\.com$/.test(base);
-  add("Setting PAYPAL_API_BASE", baseOk, base, "Use https://api-m.sandbox.paypal.com (not sandbox.paypal.com)");
+  if (!simPay) add("Setting PAYPAL_API_BASE", baseOk, base, "Use https://api-m.sandbox.paypal.com (not sandbox.paypal.com)");
 
   // Database: reachable, migrated, and a usable demo recipient
   try {
@@ -29,7 +32,7 @@ export async function GET() {
     add("Database connection", true, "connected");
     const t = await pool.query("SELECT table_name FROM information_schema.tables WHERE table_schema='public'");
     const tables = new Set(t.rows.map((r) => r.table_name));
-    const missingTables = ["transfers", "transfer_events", "webhook_events", "recipients", "conversations", "messages"].filter((x) => !tables.has(x));
+    const missingTables = ["transfers", "transfer_events", "webhook_events", "recipients", "conversations", "messages", ...(simPay ? ["sim_paypal"] : [])].filter((x) => !tables.has(x));
     add("Database tables", !missingTables.length, missingTables.length ? `missing: ${missingTables.join(", ")}` : "all present",
       "Restart npm run dev: the tables are created automatically on start. If this stays red, look for 'automatic database setup failed' in the terminal.");
     if (!missingTables.length) {
@@ -49,7 +52,8 @@ export async function GET() {
   }
 
   // PayPal sandbox login
-  if (baseOk && env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET) {
+  if (simPay) add("PayPal", true, "simulator is ON (no real PayPal is used)");
+  else if (baseOk && env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET) {
     try {
       const res = await fetch(`${base}/v1/oauth2/token`, {
         method: "POST",
@@ -63,7 +67,8 @@ export async function GET() {
   }
 
   // Gemini
-  if (env.GEMINI_API_KEY?.trim()) {
+  if (simAi) add("Gemini", true, "simulated AI is ON (no Gemini key needed)");
+  else if (env.GEMINI_API_KEY?.trim()) {
     try {
       const { res, model } = await generate({ contents: [{ role: "user", parts: [{ text: "Reply with the single word OK" }] }], config: { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } } });
       add("Gemini", true, `answered with ${model}${res.text ? "" : " (empty text)"}`);
